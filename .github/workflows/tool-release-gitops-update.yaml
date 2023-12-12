@@ -1,0 +1,215 @@
+name: tool-release-gitops-update
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: "Python version"
+        type: string
+        required: false
+        default: "3.11"
+      config_toml:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
+      python_yaml_pkg:
+        description: "ruamel.yaml pkg to use"
+        type: string
+        required: false
+        default: "0.17.35"
+      release_tag_override:
+        description: "docker tag to use"
+        type: string
+        required: false
+        default: "0.0.0"
+      push_commit:
+        description: "set to true to enable"
+        type: string
+        required: false
+        default: "false"
+      create_run_logs:
+        description: "set to true to enable"
+        type: string
+        required: false
+        default: "false"
+    outputs:
+      update_logs_str:
+        description: 'Build logs'
+        value: ${{ jobs.summarize_build_logs.outputs.build_log_summary }}
+      update_logs_ok:
+        description: 'Is the GitOps update ok'
+        value: ${{ jobs.summarize_build_logs.outputs.build_log_ok }}
+    secrets:
+      GITOPS_KEY:
+        required: false
+      CONTAINER_REGISTRY_URL:
+        required: false
+
+env:
+  BUILD_LOG_DIR: ${{ github.workspace }}
+
+jobs:
+  load-config:
+    uses: ./.github/workflows/tool-load-config.yaml
+
+  generateRelease:
+    name: Update Gitops "${{ matrix.gitops.name }}"
+    needs: load-config
+    runs-on: ubuntu-latest
+    outputs:
+      update_log: ${{ steps.update_log.outputs.update_log }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJson(needs.load-config.outputs.gitops_matrix) }}
+#    permissions:
+#      id-token: write
+#      contents: write
+
+    steps:
+      - name: Set up Python ${{ inputs.python_version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruamel.yaml==${{inputs.python_yaml_pkg}}
+
+      - name: Checkout gitops
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          repository: "${{ matrix.gitops.repo }}"
+          ssh-key: ${{ secrets.GITOPS_KEY }}
+          path: gitops
+
+      - name: Collect gitops config
+        env:
+          DOCKER_MATRIX: ${{ needs.load-config.outputs.docker_matrix }}
+        working-directory: ./gitops
+        shell: python
+        run: |
+          import ruamel.yaml
+          import json
+          import os
+
+          yaml = ruamel.yaml.YAML()
+          
+          docker_json = json.loads(os.environ["DOCKER_MATRIX"])
+          docker_ref = "${{ matrix.gitops.docker_ref }}"
+          docker_matrix = {x["ref_name"]: x for x in docker_json["docker"]}
+          print(docker_matrix)
+          
+          docker_to_gitops = docker_matrix[docker_ref]
+          team_name = docker_to_gitops["team_name"]
+          image_name = docker_to_gitops["image_name"]
+          tag = "${{ inputs.release_tag_override }}"
+          
+          docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}"
+          gitops_file = "${{ matrix.gitops.file }}"
+          kind = "${{ matrix.gitops.kind }}"
+        
+          with open(gitops_file, "r") as f:
+              yaml_blocks = list(yaml.load_all(f))
+      
+          # Update yaml kind blocks with latest image
+          for block in yaml_blocks:
+              if block["kind"] != kind:
+                  continue
+              block${{ matrix.gitops.image_path }} = docker_image
+      
+          with open(gitops_file, "w") as f:
+              yaml.dump_all(yaml_blocks, f)
+
+      - name: Gitops - commit yaml
+        working-directory: ./gitops
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          git commit --allow-empty -m "Test updated ${{ matrix.gitops.docker_ref }}:${{ inputs.release_tag_override }}"
+
+      - name: Gitops - push yaml
+        if: inputs.push_commit == 'true'
+        working-directory: ./gitops
+        run: |
+          git push
+
+      - name: Gitops - log
+        if: inputs.create_run_logs == 'true'
+        id: update_log
+        run: |
+          echo "congratuations, you updated ${{ matrix.gitops.docker_ref }}:${{ inputs.release_tag_override }}"
+          # Create a file with the build log. File name should have the github action run id in it to avoid collisions
+          echo "${{ matrix.gitops.docker_ref }}" >> build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.docker_ref }}.txt
+
+      - name: Upload Build Log
+        if: inputs.create_run_logs == 'true'
+        uses: actions/upload-artifact@v3
+        continue-on-error: true # Needed to continue in the event the build fails and no build log is found
+        with:
+          name: build-log-${{ github.run_id }}
+          path: build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.docker_ref }}.txt
+
+  summarize_build_logs:
+    if: inputs.create_run_logs == 'true'
+    needs: [generateRelease, load-config]
+    runs-on: ubuntu-latest
+
+    outputs:
+      build_log_summary: ${{ steps.summarize_build_logs.outputs.build_log_summary }}
+      build_log_ok: ${{ steps.summarize_build_logs.outputs.build_log_ok }}
+    steps:
+      - name: Download Build Log Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build-log-${{ github.run_id }}
+          path: ${{ env.BUILD_LOG_DIR }}
+
+      - name: Review Build Logs and
+        id: summarize_build_logs  # Set an ID for this step to reference its outputs
+        env:
+          GITOPS_MATRIX: ${{ needs.load-config.outputs.gitops_matrix }}
+        shell: python
+        run: |
+          import os
+          import pathlib
+          import base64
+          import json
+
+          def set_output(name, value, encode_it=False):
+            if encode_it:
+              value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+
+          # Check if docker build was successful or not
+          build_logs = []
+          for p in pathlib.Path(os.environ["BUILD_LOG_DIR"]).glob('build_log_gitops_*.txt'):
+            with open(p, 'r') as file:
+              build_logs.append(file.read().strip())
+          
+          # check if the gitops update was successful or not
+          gitops_matrix = json.loads(os.environ['GITOPS_MATRIX'])
+          
+          docker_images = [x["docker_ref"] for x in gitops_matrix["gitops"]]
+          
+          print("Docker Images:", docker_images)
+          
+          # Compare build_logs and docker_images and ensure that they are equal disregarding order
+          has_docker_build = set(docker_images) == set(build_logs)
+          if has_docker_build:
+            set_output('build_log_ok', "true")
+          else:
+            set_output('build_log_ok', "false")
+          
+          if has_docker_build:
+            run_review_str = "\n* ✅ Gitops update dry-run was successful"
+          else:
+            run_review_str = "\n* ❌ Gitops update dry-run was not successful"
+          
+          set_output('build_log_summary', run_review_str, True)

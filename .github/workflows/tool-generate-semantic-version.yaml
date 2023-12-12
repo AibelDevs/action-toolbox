@@ -1,0 +1,58 @@
+name: tool-generate-semantic-version
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: "Python version"
+        type: string
+        required: false
+        default: "3.11"
+      config_toml:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
+      python_semantic_release_pkg:
+        description: "python-semantic-release pkg to use"
+        type: string
+        required: false
+        default: "8.1.1"
+      release_override:
+        description: "if blank it will not run"
+        type: string
+        required: false
+        default: ""
+    secrets:
+      SOURCE_KEY:
+        required: false
+
+jobs:
+  generateRelease:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - name: Checkout git
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{github.ref_name}}
+          ssh-key: ${{ secrets.SOURCE_KEY }}
+
+      - name: Set up Python ${{ inputs.python_version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-semantic-release=="${{ inputs.python_semantic_release_pkg }}"
+
+      - name: Run semantic release force ${{inputs.release_override}}
+        run: |
+          semantic-release --config ${{ inputs.config_toml }} version --changelog ${{inputs.release_override}} --vcs-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

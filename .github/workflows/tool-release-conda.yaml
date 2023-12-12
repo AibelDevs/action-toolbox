@@ -1,0 +1,240 @@
+name: tool-release-conda
+
+on:
+  workflow_call:
+    inputs:
+      python_versions:
+        description: 'Python versions'
+        type: string
+        required: false
+        default: "3.11,3.12"
+      platforms:
+        description: 'Platforms'
+        type: string
+        required: false
+        default: "ubuntu-latest,windows-latest,macos-latest"
+      variants_input:
+        description: 'Override variants compiled in parallel; <variant1_key>=<variant1_value>,<variant2_key>=<variant2_value>'
+        type: string
+        required: false
+      add_build_args:
+        description: 'Additional build arguments'
+        type: string
+        required: false
+        default: ""
+      use_quetz_server:
+        description: 'Use quetz server'
+        type: string
+        required: false
+        default: "false"
+      push_conda:
+        description: 'Push to conda'
+        type: string
+        required: false
+        default: false
+      version_override:
+        description: 'Version override'
+        type: string
+        required: false
+        default: ''
+      pr_review:
+        description: 'PR review'
+        type: string
+        required: false
+        default: false
+    secrets:
+      CONDA_API_TOKEN:
+        required: false
+      QUETZ_API_KEY:
+        required: false
+      QUETZ_URL:
+        required: false
+
+env:
+  ARTIFACTS_DIR: /home/runner/work/artifacts
+  CROOT_DIR: /home/runner/work/build
+  BUILD_ARGS: ""
+
+jobs:
+  load-config:
+    uses: ./.github/workflows/tool-load-config.yaml
+
+  extract_conda_meta:
+    runs-on: ubuntu-latest
+    needs: load-config
+    outputs:
+      recipe_dir: ${{ steps.extract_conda_meta.outputs.recipe_dir }}
+      quetz_channel: ${{ steps.extract_conda_meta.outputs.quetz_channel }}
+    steps:
+      - name: Extract recipe_dir
+        id: extract_conda_meta
+        shell: python
+        run: |
+          import os
+          import json
+          import base64
+          
+          def deserialize_str(s):
+            return base64.b64decode(s).decode('utf-8')
+          
+          def set_output(name, value):
+              with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+                  print(f"{name}={value}", file=fh)
+
+          toml_data = json.loads(deserialize_str(b"${{ needs.load-config.outputs.toml_data }}"))
+          
+          set_output('recipe_dir', toml_data["tool"]['conda']['recipe_dir'])
+          set_output('quetz_channel', toml_data["tool"]['conda']['quetz_channel'])
+
+  create_variant_matrix:
+    uses: ./.github/workflows/tool-conda-variants-matrix.yaml
+    needs: extract_conda_meta
+    with:
+      python_versions: ${{ inputs.python_versions }}
+      platforms: ${{ inputs.platforms }}
+      variants_input: ${{ inputs.variants_input }}
+      add_build_args: ${{ inputs.add_build_args }}
+      # Extract recipe_dir from load-config job
+      recipe_dir: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
+
+  conda_build_and_upload:
+    name: Build "${{ matrix.builds.header_name }}"
+    needs: [ create_variant_matrix, load-config, extract_conda_meta ]
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.create_variant_matrix.outputs.final_matrix) }}
+    runs-on: ${{ matrix.builds.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+
+      - name: set ENV vars
+        run: |
+          pwd
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "ARTIFACTS_DIR=D:/a/artifacts" >> $GITHUB_ENV
+            echo "CROOT_DIR=D:/a/build" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "ARTIFACTS_DIR=/Users/runner/work/artifacts" >> $GITHUB_ENV
+            echo "CROOT_DIR=/Users/runner/work/build" >> $GITHUB_ENV
+          elif [[ "$RUNNER_OS" == "Linux" ]]; then
+            echo "using default paths"
+          fi      
+
+      - uses: mamba-org/setup-micromamba@v1 # https://github.com/mamba-org/setup-micromamba
+        with:
+          environment-name: build-env
+          cache-environment: true
+          condarc: |
+            remote_max_retries: 5
+            remote_backoff_factor: 5
+            conda-build:
+              root-dir: ${{ env.CROOT_DIR }}
+              output_folder: ${{ env.ARTIFACTS_DIR }}
+              pkg_format: 2
+              zstd_compression_level: 19
+            channel_priority: strict
+            channels:
+              - conda-forge
+          create-args: >-
+            python=3.11
+            boa=0.16.0
+            toml=0.10.2
+            anaconda-client=1.12.1
+            quetz-client=0.5.0
+
+      - name: Override version
+        if: ${{ inputs.version_override != '' }}
+        env:
+          VERSION_OVERRIDE: ${{ inputs.version_override }}
+        run: |
+          python - <<EOF
+          import os
+          import pathlib
+          import toml
+
+          def set_output(name, value):
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                  print(f'{name}={value}', file=fh)
+
+          pyproject_toml_file = list(pathlib.Path('').rglob('pyproject.toml'))[0]
+
+          with open(pyproject_toml_file) as fh:
+              pyproject_toml = toml.load(fh)
+
+          version_override = os.getenv('VERSION_OVERRIDE')
+          if 'next' in version_override:
+              # replace next. with next to comply with PEP440
+              version_override = version_override.replace('-next.', 'dev')
+
+          pyproject_toml['project']['version'] = version_override
+
+          with open(pyproject_toml_file, 'w') as fh:
+              toml.dump(pyproject_toml, fh)
+          EOF
+
+      - name: Create variant str
+        run: |
+          python - <<EOF
+          
+          import os
+          import base64
+
+
+          def deserialize_str(s):
+            return base64.b64decode(s).decode('utf-8')
+
+          build_args = deserialize_str(b"${{ matrix.builds.build_args }}")
+
+          with open(os.environ['GITHUB_ENV'], 'a') as fh:
+            print(f"BUILD_ARGS={build_args}", file=fh)
+          EOF
+
+      - name: Build
+        run: |
+          conda mambabuild . ${{ env.BUILD_ARGS }}
+        working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
+
+      - name: Upload packages to Quetz Server
+        if: ${{ inputs.use_quetz_server == 'true' && inputs.push_conda == 'true' }}
+        env:
+          QUETZ_URL: ${{ secrets.QUETZ_URL }}
+          QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
+        run: |
+          python - <<EOF
+          
+          import pathlib
+          import os
+          import requests
+          from quetz_client import QuetzClient
+          
+          quetz_channel = "${{ needs.extract_conda_meta.outputs.quetz_channel }}"
+          
+          client = QuetzClient.from_token(os.getenv('QUETZ_URL'), os.getenv('QUETZ_API_KEY'))
+          
+          for conda_file in pathlib.Path(os.getenv('ARTIFACTS_DIR')).rglob('*.conda'):
+            try:
+              client.post_file_to_channel(quetz_channel, conda_file, False)
+            except requests.exceptions.HTTPError as e:
+              print(e)
+              # if 409 error, then package already exists
+              if e.response.status_code == 409:
+                print(f"Likely due to package {conda_file} already exists in channel ${{ matrix.channel }}")
+              else:
+                raise e
+          EOF
+
+      - name: upload to anaconda
+        if: ${{ inputs.use_quetz_server == 'false' && inputs.push_conda == 'true' }}
+        run: |
+          find ${{ env.ARTIFACTS_DIR }} -name *.conda | while read file
+          do
+              echo $file
+              anaconda upload $file
+          done
+        env:
+          ANACONDA_TOKEN: ${{ secrets.CONDA_API_TOKEN }}

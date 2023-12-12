@@ -1,0 +1,189 @@
+name: tool-review-docker
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: 'Python version'
+        type: string
+        required: false
+        default: '3.11'
+      config_toml_file:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
+    outputs:
+      docker_review_str:
+        description: 'Body of the comment'
+        value: ${{ jobs.docker_review.outputs.docker_review_str }}
+      docker_review_ok:
+        description: 'Is the PR ok'
+        value: ${{ jobs.docker_review.outputs.docker_review_ok }}
+    secrets:
+      CONTAINER_REGISTRY_URL:
+        required: false
+      CONTAINER_REGISTRY_USERNAME:
+        required: false
+      CONTAINER_REGISTRY_PASSWORD:
+        required: false
+
+jobs:
+  load-config:
+    uses: ./.github/workflows/tool-load-config.yaml
+
+  docker_prep:
+    name: Docker Secrets and Login Check
+    runs-on: ubuntu-latest
+    outputs:
+      registry_login_success: ${{ steps.registry_login.outputs.login_success }}
+      has_registry_url: ${{ steps.secrets_check.outputs.has_registry_url }}
+      has_registry_username: ${{ steps.secrets_check.outputs.has_registry_username }}
+      has_registry_password: ${{ steps.secrets_check.outputs.has_registry_password }}
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install toml==0.10.2
+
+      - name: Check for existence of required secrets
+        id: secrets_check
+        run: |
+          if [ -z "${{ secrets.CONTAINER_REGISTRY_URL }}" ]; then
+            echo "CONTAINER_REGISTRY_URL is not set as a secret"
+            echo "has_registry_url=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_registry_url=true" >> $GITHUB_OUTPUT
+          fi
+          
+          if [ -z "${{ secrets.CONTAINER_REGISTRY_USERNAME }}" ]; then
+            echo "CONTAINER_REGISTRY_USERNAME is not set as a secret"
+            echo "has_registry_username=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_registry_username=true" >> $GITHUB_OUTPUT
+          fi
+          
+          if [ -z "${{ secrets.CONTAINER_REGISTRY_PASSWORD }}" ]; then
+            echo "CONTAINER_REGISTRY_PASSWORD is not set as a secret"
+            echo "has_registry_password=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_registry_password=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if registry login is setup correctly
+        continue-on-error: true
+        id: registry_login
+        run: |
+          echo ${{ secrets.CONTAINER_REGISTRY_PASSWORD }} | docker login ${{ secrets.CONTAINER_REGISTRY_URL }} -u ${{ secrets.CONTAINER_REGISTRY_USERNAME }} --password-stdin
+          echo "login_success=true" >> $GITHUB_OUTPUT
+
+  docker_build_tests:
+    uses: ./.github/workflows/tool-release-docker.yaml
+    with:
+      create_build_logs: 'true'
+    secrets:
+      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
+
+  docker_review:
+    runs-on: ubuntu-latest
+    needs: [ docker_build_tests, docker_prep, load-config ]
+    if: always()
+    outputs:
+      docker_review_str: ${{ steps.comment_body.outputs.body }}
+      docker_review_ok: ${{ steps.comment_body.outputs.docker_review_ok }}
+    steps:
+      - name: Review Docker config and create body for comment
+        id: comment_body  # Set an ID for this step to reference its outputs
+        env:
+          DOCKER_MATRIX_STR: ${{ needs.load-config.outputs.docker_matrix }}
+        shell: python
+        run: |
+          import os
+          import pathlib
+          import base64
+          import json
+
+          def set_output(name, value, encode_it=False):
+            if encode_it:
+              value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+          
+          # Check if the registry_login was successful or not
+          has_registry_login = '${{ needs.docker_prep.outputs.registry_login_success }}' == 'true'
+          
+          # Check if docker build was successful or not
+          build_logs = "${{ needs.docker_build_tests.outputs.build_logs_str }}".split(";")
+          
+          # Remove empty strings
+          build_logs = [x for x in build_logs if x]
+          
+          print("Build Log:", build_logs)
+          docker_matrix = json.loads(os.environ['DOCKER_MATRIX_STR'])["docker"]
+          docker_images = [x["ref_name"] for x in docker_matrix]
+          
+          print("Docker Images:", docker_images)
+          
+          # Compare build_logs and docker_images and ensure that they are equal disregarding order
+          has_docker_build = set(docker_images) == set(build_logs)
+          print("has_docker_build:", has_docker_build)
+          
+          # Check if all secrets are set         
+          has_registry_url = '${{ needs.docker_prep.outputs.has_registry_url }}' == 'true'
+          has_registry_username = '${{ needs.docker_prep.outputs.has_registry_username }}' == 'true'
+          has_registry_password = '${{ needs.docker_prep.outputs.has_registry_password }}' == 'true'
+          
+          all_checks = [has_registry_login, has_registry_url, has_registry_username, has_registry_password, has_docker_build]
+          
+          # Docker Review results
+          body = "\n# Docker Review:\n\n"
+          
+          if all(all_checks):
+            body += "I found no docker-related issues.\n"
+            set_output('docker_review_ok', 'true')
+          else:
+            body += "I found some docker-related issues:\n\n"
+            set_output('docker_review_ok', 'false')
+          
+          if has_registry_url:
+            body += "* ✅ I found the CONTAINER_REGISTRY_URL secret.\n"
+          else:
+            body += "* ❌ I did not find the CONTAINER_REGISTRY_URL secret.\n"
+          
+          if has_registry_username:
+            body += "* ✅ I found the CONTAINER_REGISTRY_USERNAME secret.\n"
+          else:
+            body += "* ❌ I did not find the CONTAINER_REGISTRY_USERNAME secret.\n"
+          
+          if has_registry_password:
+            body += "* ✅ I found the CONTAINER_REGISTRY_PASSWORD secret.\n"
+          else:
+            body += "* ❌ I did not find the CONTAINER_REGISTRY_PASSWORD secret.\n"
+          
+          if has_registry_login:
+            body += "* ✅ I was able to login to the Container Registry.\n"
+          else:
+            body += "* ❌ I was not able to login to the Container Registry.\n"
+          
+          if has_docker_build:
+            body += "* ✅ I was able to build the docker image(s).\n"
+          else:
+            body += "* ❌ I was not able to build the docker image(s).\n"
+            for image in docker_images:
+              if image not in build_logs:
+                body += f'  * ❌ I was not able to build the docker image: "{image}"\n'
+              else:
+                body += f'  * ✅ I was able to build the docker image: "{image}"\n'
+          
+          # Set the output
+          set_output('body', body, True)
+          print(body)

@@ -1,0 +1,93 @@
+name: Review Pull Request
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: 'Python version'
+        type: string
+        required: false
+        default: '3.11'
+    outputs:
+      pr_review_str:
+        description: 'Body of the comment'
+        value: ${{ jobs.pr-review.outputs.pr_review_str }}
+      pr_review_ok:
+        description: 'Is the PR ok'
+        value: ${{ jobs.pr-review.outputs.pr_review_ok }}
+    secrets:
+      SOURCE_KEY:
+        required: false
+
+jobs:
+  pr-lint-checker:
+    uses: ./.github/workflows/tool-pr-linter.yaml
+    secrets:
+      SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
+
+  pr-review:
+    name: Review PR
+    needs: pr-lint-checker
+    runs-on: ubuntu-latest
+    outputs:
+      pr_review_str: ${{ steps.comment_body.outputs.body }}
+      pr_review_ok: ${{ steps.comment_body.outputs.PR_REVIEW_OK }}
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install toml==0.10.2
+
+      - name: Review PR and create body for comment
+        id: comment_body  # Set an ID for this step to reference its outputs
+        shell: python
+        run: |
+          import os
+          import base64
+          
+          def set_output(name, value, encode_it=False):
+            if encode_it:
+              value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+          
+          # PR lint results
+          has_source_key = '${{ needs.pr-lint-checker.outputs.has_source_key_secret }}' == 'true'
+          check_pr_title = '${{ needs.pr-lint-checker.outputs.check_pr_title }}' == 'true'
+          check_release_label = '${{ needs.pr-lint-checker.outputs.check_release_label }}' == 'true'
+          
+          all_checks = [has_source_key, check_pr_title, check_release_label]
+          
+          body = "\n# PR Review:\n\n"
+          
+          if all(all_checks):
+            body += "I found no pr-related issues.\n"
+            set_output('PR_REVIEW_OK', 'true')
+          else:
+            body += "I found some pr-related issues:\n\n"
+            set_output('PR_REVIEW_OK', 'false')
+                   
+          if check_pr_title is False:
+            body += "\n * ❌ You need to start PR title with fix: feat: fix!: feat!: chore:"
+          else:
+            body += "\n * ✅ PR title is ok"
+          
+          if check_release_label is False:
+            body += "\n * ❌ You need to add a release label to your PR. Valid labels: release-XXX (auto, patch, minor, major or skip)"
+          else:
+            body += "\n * ✅ Release label is ok"
+          
+          if has_source_key is False:
+            body += "\n * ❌ You need to add SOURCE_KEY as a secret to your repo if you want semantic-release to work"
+          else:
+            body += "\n * ✅ SOURCE_KEY is set as a secret"
+          
+          # Set the output
+          set_output('body', body, True)
+          
+          print(body)
