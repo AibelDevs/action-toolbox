@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   review:
-    uses: ./.github/workflows/tool-default-review.yaml
+    uses: ./.github/workflows/tool-default-pr-review.yaml
     secrets:
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
       CONDA_API_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
