@@ -68,7 +68,7 @@ jobs:
           import requests
           import os
 
-          semantic_data = toml.load("${{ inputs.config_toml_file }}")
+          action_data = toml.load("${{ inputs.config_toml_file }}")
           pyproject_data = toml.load("pyproject.toml")
 
           def set_output(name, value):
@@ -94,11 +94,11 @@ jobs:
         
             return latest_version
           
-          print(semantic_data)
+          print(action_data)
           print(pyproject_data)
           
-          pip_tool = semantic_data["tool"]["pip"]
-          conda_tool = semantic_data["tool"]["conda"]
+          pip_tool = action_data["tool"]["python"].get("pip", dict(enabled=False))
+          conda_tool = action_data["tool"]["python"].get("conda", dict(enabled=False))
           
           pyproject_name = pyproject_data["project"]["name"]
           project_version = pyproject_data["project"]["version"]
