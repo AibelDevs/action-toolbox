@@ -46,47 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install toml==0.10.2 python-semantic-release==8.1.1
-
-      - name: Check the calculated version from semantic release
-        shell: python
-        env:
-          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
-        run: |
-          import subprocess
-          import os
-          
-          def set_output(name, value):
-            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-                print(f'{name}={value}', file=fh)
-          
-          label_names = json.loads(os.environ['LABELS'])
-          rel_labels = [l for l in label_names if l.startswith('release-')]
-          
-          
-          # Command to execute
-          command = ["semantic-release", "--config", "${{ inputs.config_toml }}", "--noop", "version"]
-          
-          if len(rel_labels) > 0:
-            if len(rel_labels) != 1:
-              print(f"WARNING! More than one release label found. Will use the first one. {rel_labels}", )
-            rel_label = rel_labels[0]
-            print("Release label found:", rel_labels[0])
-            if rel_label not in ("release-skip", "release-auto"):
-              forced_release = "--" + rel_label.split("-")[1]
-              command.append(forced_release)
-          
-          print(command)          
-          # Running the command and capturing output
-          result = subprocess.run(command, capture_output=True, text=True)
-          
-          # Extracting the output
-          output = result.stdout.strip()
-          
-          # The version name should be in the output
-          print("Captured Version Name:", output)
-          
-          set_output('calculated_version', output)
+          pip install toml==0.10.2
 
       - name: Review PR and create body for comment
         id: comment_body  # Set an ID for this step to reference its outputs
