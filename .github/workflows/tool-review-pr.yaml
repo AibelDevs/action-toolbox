@@ -8,11 +8,6 @@ on:
         type: string
         required: false
         default: '3.11'
-      config_toml:
-        description: "config file in repo for actions"
-        type: string
-        required: false
-        default: "action_config.toml"
     outputs:
       pr_review_str:
         description: 'Body of the comment'

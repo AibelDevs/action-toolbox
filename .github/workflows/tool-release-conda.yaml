@@ -83,8 +83,8 @@ jobs:
 
           toml_data = json.loads(deserialize_str(b"${{ needs.load-config.outputs.toml_data }}"))
           
-          set_output('recipe_dir', toml_data["tool"]['conda']['recipe_dir'])
-          set_output('quetz_channel', toml_data["tool"]['conda']['quetz_channel'])
+          set_output('recipe_dir', toml_data["tool"]["python"]['conda']['recipe_dir'])
+          set_output('quetz_channel', toml_data["tool"]["python"]['conda'].get('quetz_channel', None))
 
   create_variant_matrix:
     uses: ./.github/workflows/tool-conda-variants-matrix.yaml
