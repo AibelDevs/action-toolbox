@@ -2,6 +2,31 @@ name: Default Review Pull Request
 
 on:
   workflow_call:
+    secrets:
+      SOURCE_KEY:
+        required: true
+      GITOPS_KEY:
+        required: false
+      CONTAINER_REGISTRY_URL:
+        required: false
+      CONTAINER_REGISTRY_USERNAME:
+        required: false
+      CONTAINER_REGISTRY_PASSWORD:
+        required: false
+      CONDA_API_TOKEN:
+        required: false
+      QUETZ_API_KEY:
+        required: false
+      QUETZ_URL:
+        required: false
+      PYPI_API_TOKEN:
+        required: false
+      CUSTOM_PYPI_USERNAME:
+        required: false
+      CUSTOM_PYPI_PASSWORD:
+        required: false
+      CUSTOM_PYPI_URL:
+        required: false
 
 
 permissions:
@@ -24,7 +49,7 @@ jobs:
     with:
       use_pylint: false
     needs: load-config
-    if : ${{ needs.load-config.outputs.python_enabled == 'true' }}
+    if: ${{ needs.load-config.outputs.python_enabled == 'true' }}
     secrets:
       CONDA_API_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
@@ -37,7 +62,7 @@ jobs:
   docker-review:
     uses: AibelDevs/action-toolbox/.github/workflows/tool-review-docker.yaml@main
     needs: load-config
-    if : ${{ needs.load-config.outputs.docker_enabled == 'true' }}
+    if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
       CONTAINER_REGISTRY_USERNAME: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
@@ -46,7 +71,7 @@ jobs:
   gitops-review:
     uses: AibelDevs/action-toolbox/.github/workflows/tool-review-gitops.yaml@main
     needs: load-config
-    if : ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
+    if: ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
@@ -92,7 +117,7 @@ jobs:
           
           all_checks = []
           review_str = ''
-                    
+          
           # PR
           review_str += deserialize_str('${{ needs.pr-review.outputs.pr_review_str }}')
           all_checks.append('${{ needs.pr-review.outputs.pr_review_ok }}' == 'true')
@@ -134,17 +159,17 @@ jobs:
             const issue_number = context.issue.number
             const owner = context.repo.owner
             const repo = context.repo.repo
-        
+            
             // List all comments on the PR
             const comments = await github.rest.issues.listComments({
               issue_number,
               owner,
               repo
             });
-        
+            
             // Find the last comment made by the bot
             const botComment = comments.data.reverse().find(comment => comment.user.login === 'github-actions[bot]');
-        
+            
             // If a previous comment by the bot exists, delete it
             if (botComment) {
               await github.rest.issues.deleteComment({
