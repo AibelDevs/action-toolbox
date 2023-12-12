@@ -50,6 +50,7 @@ jobs:
         with:
 #          ref: ${{ github.event.pull_request.head.sha || github.ref }}
           ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          fetch-depth: 0
 
       - name: Set up Python ${{ inputs.python_version }}
         uses: actions/setup-python@v3
