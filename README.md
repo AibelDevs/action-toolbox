@@ -2,7 +2,7 @@
 
 A toolbox for automated PR checks and package releases.
 
-### how to create sshkey
+### How to create sshkey
 
 `ssh-keygen -t ed25519 -C "email@whater.com"`
 
