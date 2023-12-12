@@ -135,7 +135,7 @@ jobs:
           py_tool = data["tool"].get("python", dict(enabled=False))
           python_enabled = py_tool.get("enabled", False)
           if python_enabled:
-            pip_tool = py_tool.get("pip", , dict(enabled=False))
+            pip_tool = py_tool.get("pip", dict(enabled=False))
             pip_enabled = pip_tool.get("enabled", False) 
             if pip_enabled:
               custom_pypi_server = pip_tool.get("use_custom_pypi_server", False)

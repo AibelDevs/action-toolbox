@@ -73,6 +73,8 @@ quetz_channel = "test"
 
 [tool.semantic_release]
 version_toml = ["action_config.toml:tool.action.version"]
+# Usually you will have a version in your package.json or pyproject.toml. This is only for this repository
+
 # info
 #
 # This will generate a release  for your project if added
