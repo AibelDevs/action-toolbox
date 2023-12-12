@@ -25,9 +25,6 @@ on:
       gitops_enabled:
         description: 'Is gitops enabled'
         value: ${{ jobs.config.outputs.gitops_enabled }}
-      json_enabled:
-        description: 'Is json enabled'
-        value: ${{ jobs.config.outputs.json_enabled }}
       python_enabled:
         description: 'Is python enabled'
         value: ${{ jobs.config.outputs.python_enabled }}
@@ -61,7 +58,6 @@ jobs:
     outputs:
       docker_enabled: ${{ steps.config.outputs.docker_enabled }}
       gitops_enabled: ${{ steps.config.outputs.gitops_enabled }}
-      json_enabled: ${{ steps.config.outputs.json_enabled }}
       python_enabled: ${{ steps.config.outputs.python_enabled }}
       pip_enabled: ${{ steps.config.outputs.pip_enabled }}
       conda_enabled: ${{ steps.config.outputs.conda_enabled }}
@@ -106,51 +102,50 @@ jobs:
       
           data = toml.load(os.getenv("CONFIG_TOML_FILE"))
           
-          # Evaluate all docker configs
+          
+          # Docker
           docker_config_list = data["tool"].get("docker", [])
           docker_enabled = False
           for docker_config in docker_config_list:
               if docker_config["enabled"]:
                   docker_enabled = True
                   break
+          
           set_output("docker_enabled", docker_enabled)
           
           # I cannot pass a list to the github actions matrix, so I have to convert the list to a dict
           set_output("docker_matrix", json.dumps({'docker': docker_config_list}))
       
-          # Evaluate all gitops configs
+          
+          # GitOps
           gitops_config_list = data["tool"].get("gitops", [])
           gitops_enabled = False
           for gitops_config in gitops_config_list:
               if gitops_config["enabled"]:
                   gitops_enabled = True
                   break
+          
           set_output("gitops_enabled", gitops_enabled)
           
           # I cannot pass a list to the github actions matrix, so I have to convert the list to a dict
           set_output("gitops_matrix", json.dumps({'gitops': gitops_config_list}))
           
           
-          json_spec = data["tool"].get('json', dict(enabled=False))
-          set_output("json_enabled", json_spec["enabled"])
-          
-          pip_tool = data["tool"].get("pip", None)
-          if pip_tool is None:
-            pip_enabled = False
-          else:
-            pip_enabled = data["tool"]["pip"]["enabled"]
-            custom_pypi_server = data["tool"]["pip"].get("use_custom_pypi_server", False)
-            set_output("custom_pypi_server", custom_pypi_server)
-          
-          conda_tool = data["tool"].get("conda", None)
-          if conda_tool is None:
-              conda_enabled = False
-          else:
-              conda_enabled = data["tool"]["conda"]["enabled"]
-              custom_quetz_server = data["tool"]["conda"].get("use_custom_quetz_server", False)
-              set_output("custom_quetz_server", custom_quetz_server)
-
-          python_enabled = pip_enabled or conda_enabled
+          # Python
+          py_tool = data["tool"].get("python", dict(enabled=False))
+          python_enabled = py_tool.get("enabled", False)
+          if python_enabled:
+            pip_tool = py_tool.get("pip", , dict(enabled=False))
+            pip_enabled = pip_tool.get("enabled", False) 
+            if pip_enabled:
+              custom_pypi_server = pip_tool.get("use_custom_pypi_server", False)
+              set_output("custom_pypi_server", custom_pypi_server)
+            
+            conda_tool = py_tool.get("conda", dict(enabled=False))
+            conda_enabled = conda_tool.get("enabled", False)
+            if conda_enabled:
+                custom_quetz_server = conda_tool.get("use_custom_quetz_server", False)
+                set_output("custom_quetz_server", custom_quetz_server)
           
           set_output("python_enabled", python_enabled)
           set_output("pip_enabled", pip_enabled)
