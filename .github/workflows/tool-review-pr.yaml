@@ -87,7 +87,8 @@ jobs:
           else:
             body += "\n * ✅ SOURCE_KEY is set as a secret"
           
-          body += '\n * ✅ Calculated next version: "${{ needs.pr-lint-checker.outputs.calculated_version }}"'
+          next_version = "${{ needs.pr-lint-checker.outputs.calculated_version }}"
+          body += f'\n * ✅ Calculated next version: "{next_version}"'
           
           # Set the output
           set_output('body', body, True)

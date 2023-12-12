@@ -47,7 +47,7 @@ jobs:
       has_source_key_secret: ${{ steps.check-source-key.outputs.has_source_key_secret }}
       check_pr_title: ${{ steps.check_pr_title.outputs.check_pr_title }}
       contains_release_label: ${{ steps.check_release_label.outputs.contains_release_label }}
-      calculated_version: ${{ steps.calculate_version.outputs.calculated_version }}
+      calculated_version: ${{ steps.calculate_version.outputs.version }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -277,6 +277,7 @@ jobs:
               print(result.stderr)
 
           # The version name should be in the output
-          print("Captured Version Name:", output)
-
-          set_output('calculated_version', output)
+          print(f'Captured Version Name: "{output}"')
+          
+          # Set the output
+          set_output('version', str(output))
