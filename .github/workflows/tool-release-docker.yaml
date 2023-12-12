@@ -78,6 +78,57 @@ jobs:
               print("IS_PRE_RELEASE=false")
               set_env('IS_PRE_RELEASE', 'false')
 
+      - name: Update pyproject.toml and package.json (if exists) on pre-release
+        if: env.IS_PRE_RELEASE == 'true'
+        shell: python
+        run: |
+            import os
+            import pathlib
+            import toml
+            import json
+            
+            def set_env(name, value):
+                with open(os.environ['GITHUB_ENV'], 'a') as fh:
+                    print(f'{name}={value}', file=fh)
+            
+            pyproject_tomls = list(pathlib.Path('').rglob('pyproject.toml'))
+            package_jsons = list(pathlib.Path('').rglob('package.json'))
+            
+            
+            # Check if pyproject.toml exists
+            if len(pyproject_tomls) > 0:
+                print("Found pyproject.toml")
+                pyproject_toml = pyproject_tomls[0]
+                print(f"{pyproject_toml=}")
+                
+                # Read pyproject.toml
+                with open(pyproject_toml, 'r') as file:
+                    toml_data = toml.load(file)
+                
+                # Update pyproject.toml
+                toml_data['project']['version'] = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
+                
+                # Write pyproject.toml
+                with open(pyproject_toml, 'w') as file:
+                    toml.dump(toml_data, file)
+            
+            # Check if package.json exists
+            if len(package_jsons) > 0:
+                print("Found package.json")
+                package_json = package_jsons[0]
+                print(f"{package_json=}")
+                
+                # Read package.json
+                with open(package_json, 'r') as file:
+                    json_data = json.load(file)
+                
+                # Update package.json
+                json_data['version'] = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
+                
+                # Write package.json
+                with open(package_json, 'w') as file:
+                    json.dump(json_data, file)
+
       - name: Build docker image with ${{ steps.set_release_tag.outputs.docker_tag }} tag
         if: inputs.create_build_logs == 'false'
         run: |
