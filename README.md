@@ -61,6 +61,10 @@ Below are the repository settings and branch protection rules which is recommend
 
 ## Require status check to pass before merging
 
+Usually you will have to run the actions at least once on a new repository for the action names to appear.
+
+In the [pr-review.yaml](.github/workflows/pr-review.yaml) sample, the final review job is called `Python Check Pull Request`
+which would be a natural requirement for the branch protection rule.
 
 ![Status_Check](./images/status_check.png)
 <br /><br /><br /><br />

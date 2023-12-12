@@ -19,6 +19,9 @@ on:
       check_release_label:
         description: "Is release label set"
         value: ${{ jobs.lintCheck.outputs.contains_release_label }}
+      calculated_version:
+        description: "Calculated version"
+        value: ${{ jobs.lintCheck.outputs.calculated_version }}
     secrets:
       SOURCE_KEY:
         required: false
@@ -35,11 +38,13 @@ jobs:
       has_source_key_secret: ${{ steps.check-source-key.outputs.has_source_key_secret }}
       check_pr_title: ${{ steps.check_pr_title.outputs.check_pr_title }}
       contains_release_label: ${{ steps.check_release_label.outputs.contains_release_label }}
+      calculated_version: ${{ steps.calculate_version.outputs.calculated_version }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+#          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
 
       - name: Set up Python ${{ inputs.python_version }}
         uses: actions/setup-python@v3
@@ -49,7 +54,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install toml==0.10.2
+          pip install toml==0.10.2 python-semantic-release==8.1.1
 
       - name: check if SOURCE_KEY is set as a secret
         id: check-source-key
@@ -190,3 +195,46 @@ jobs:
               repo: context.repo.repo,
               labels: ['release-skip']
             })
+
+      - name: Check the calculated version from semantic release
+        shell: python
+        id: calculate_version
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          import subprocess
+          import os
+
+          def set_output(name, value):
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+
+          label_names = json.loads(os.environ['LABELS'])
+          rel_labels = [l for l in label_names if l.startswith('release-')]
+          if len(rel_labels) == 0:
+            if os.environ['ADD_DEFAULT_LABEL'] == 'true':
+              rel_labels.append('release-skip')
+
+          # Command to execute
+          command = ["semantic-release", "--config", "${{ inputs.config_toml }}", "--noop", "version"]
+
+          if len(rel_labels) > 0:
+            if len(rel_labels) != 1:
+              print(f"WARNING! More than one release label found. Will use the first one. {rel_labels}", )
+            rel_label = rel_labels[0]
+            print("Release label found:", rel_labels[0])
+            if rel_label not in ("release-skip", "release-auto"):
+              forced_release = "--" + rel_label.split("-")[1]
+              command.append(forced_release)
+
+          print(command)          
+          # Running the command and capturing output
+          result = subprocess.run(command, capture_output=True, text=True)
+
+          # Extracting the output
+          output = result.stdout.strip()
+
+          # The version name should be in the output
+          print("Captured Version Name:", output)
+
+          set_output('calculated_version', output)

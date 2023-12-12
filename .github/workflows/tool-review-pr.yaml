@@ -8,6 +8,11 @@ on:
         type: string
         required: false
         default: '3.11'
+      config_toml:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
     outputs:
       pr_review_str:
         description: 'Body of the comment'
@@ -86,6 +91,8 @@ jobs:
             body += "\n * ❌ You need to add SOURCE_KEY as a secret to your repo if you want semantic-release to work"
           else:
             body += "\n * ✅ SOURCE_KEY is set as a secret"
+          
+          body += "\n * ✅ Calculated Next version: ${{ needs.pr-lint-checker.outputs.calculated_version }}"
           
           # Set the output
           set_output('body', body, True)
