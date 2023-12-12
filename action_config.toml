@@ -1,5 +1,5 @@
 [tool.action]
-version = "0.0.1"
+version = "1.0.0"
 # This is only relevant for this repository. Normally you will have a version in your package.json or pyproject.toml
 
 [[tool.docker]]

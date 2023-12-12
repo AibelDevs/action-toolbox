@@ -2,6 +2,35 @@
 
 
 
+## v1.0.0 (2023-12-12)
+
+### Breaking
+
+* feat!: initial stable release (#7) ([`4d7e254`](https://github.com/AibelDevs/action-toolbox/commit/4d7e254fc3486d86909a04bb11676eb5ea4b5b09))
+
+### Chore
+
+* chore: add code for forcing releases ([`34c13fa`](https://github.com/AibelDevs/action-toolbox/commit/34c13faa937f11877d55cbb144324f3d1a695e42))
+
+* chore: try using pr head ([`a948b7e`](https://github.com/AibelDevs/action-toolbox/commit/a948b7e8bca954018a1208b859b7c99e11ce26fa))
+
+* chore: expand fetch depth ([`2a0f6b2`](https://github.com/AibelDevs/action-toolbox/commit/2a0f6b2c027a4672ac8732f3bef693289bdfc4a1))
+
+* chore: print errors also ([`7d9f196`](https://github.com/AibelDevs/action-toolbox/commit/7d9f19684adc6bf8c42d28f239c3b379321e4cda))
+
+* chore: Add missing inputs to workflows and minor conda fixes (#6) ([`d0673bc`](https://github.com/AibelDevs/action-toolbox/commit/d0673bcdcda6d38340567a2997900413e918b779))
+
+* chore: add missing json module import (#5) ([`4ddb80a`](https://github.com/AibelDevs/action-toolbox/commit/4ddb80a4be56ec9e40aaf0a229381414afbee70e))
+
+* chore: add calculation preview of next version (#4) ([`5e07665`](https://github.com/AibelDevs/action-toolbox/commit/5e0766547402f256d6d8a10530b70601b71a4592))
+
+### Unknown
+
+* remove unused step ([`dbf846a`](https://github.com/AibelDevs/action-toolbox/commit/dbf846a6b06a9f0fda712732f4f4da1960516d2c))
+
+* minor change ([`f535273`](https://github.com/AibelDevs/action-toolbox/commit/f53527323973417d5c9f9d0ba934109b46d4434f))
+
+
 ## v0.0.1 (2023-12-12)
 
 ### Fix
