@@ -239,6 +239,10 @@ jobs:
 
           # Extracting the output
           output = result.stdout.strip()
+          
+          # print any errors
+          if result.stderr:
+              print(result.stderr)
 
           # The version name should be in the output
           print("Captured Version Name:", output)
