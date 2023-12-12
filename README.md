@@ -45,6 +45,23 @@ Or if you have a private QUETZ server
 * `QUETZ_API_KEY`
 * `QUETZ_URL`
 
-### Add how to use/samples
+### Repo setup
 
-todo..
+Below are the repository settings and branch protection rules which is recommended with these action tools
+
+## Lock PR to Squash merging
+
+![Pull_request_merge](./images/PR.png)
+
+<br /><br /><br /><br />
+
+## Add branch rule with require PR before merging
+
+![Branch_Protection](./images/BP_Rule.png)
+<br /><br /><br /><br />
+
+## Require status check to pass before merging
+
+
+![Status_Check](./images/status_check.png)
+<br /><br /><br /><br />
