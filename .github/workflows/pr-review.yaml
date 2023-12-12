@@ -18,16 +18,16 @@ concurrency:
 
 jobs:
   load-config:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-load-config.yaml@ka1
+    uses: AibelDevs/action-toolbox/.github/workflows/tool-load-config.yaml@main
 
   pr-review:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-pr.yaml@ka1
+    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-pr.yaml@main
     needs: load-config
     secrets:
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
 
   python-review:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-python.yaml@ka1
+    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-python.yaml@main
     with:
       use_pylint: false
     needs: load-config
@@ -42,7 +42,7 @@ jobs:
       QUETZ_URL: ${{ secrets.QUETZ_URL }}
 
   docker-review:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-docker.yaml@ka1
+    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-docker.yaml@main
     needs: load-config
     if : ${{ needs.load-config.outputs.docker_enabled == 'true' }}
     secrets:
@@ -51,7 +51,7 @@ jobs:
       CONTAINER_REGISTRY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
   gitops-review:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-gitops.yaml@ka1
+    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-gitops.yaml@main
     needs: load-config
     if : ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
     secrets:
