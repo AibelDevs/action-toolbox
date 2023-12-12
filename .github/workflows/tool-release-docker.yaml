@@ -107,7 +107,8 @@ jobs:
             
             pyproject_tomls = list(pathlib.Path('').rglob('pyproject.toml'))
             package_jsons = list(pathlib.Path('').rglob('package.json'))
-            
+            version_override = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
+            print(f"{version_override=}")
             
             # Check if pyproject.toml exists
             if len(pyproject_tomls) > 0:
@@ -120,11 +121,16 @@ jobs:
                     toml_data = toml.load(file)
                 
                 # Update pyproject.toml
-                toml_data['project']['version'] = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
+              
+                # replace next. with next to comply with PEP440
+                py_version_override = version_override.replace('-next.', 'dev')
+                print(f"{py_version_override=}")
+                toml_data['project']['version'] = py_version_override
                 
                 # Write pyproject.toml
                 with open(pyproject_toml, 'w') as file:
                     toml.dump(toml_data, file)
+                print(toml_data)
             
             # Check if package.json exists
             if len(package_jsons) > 0:
