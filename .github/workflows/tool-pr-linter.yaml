@@ -48,8 +48,8 @@ jobs:
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
-#          ref: ${{ github.event.pull_request.head.sha || github.ref }}
-          ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+#          ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
           fetch-depth: 0
 
       - name: Set up Python ${{ inputs.python_version }}
@@ -206,6 +206,7 @@ jobs:
         shell: python
         id: calculate_version
         env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         run: |
           import subprocess
