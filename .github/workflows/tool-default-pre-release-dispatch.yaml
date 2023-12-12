@@ -23,7 +23,31 @@ on:
         required: false
         type: boolean
         default: true
-
+    secrets:
+      SOURCE_KEY:
+        required: false
+      CONDA_API_TOKEN:
+        required: false
+      PYPI_API_TOKEN:
+        required: false
+      CUSTOM_PYPI_USERNAME:
+        required: false
+      CUSTOM_PYPI_PASSWORD:
+        required: false
+      CUSTOM_PYPI_URL:
+        required: false
+      QUETZ_API_KEY:
+        required: false
+      QUETZ_URL:
+        required: false
+      CONTAINER_REGISTRY_URL:
+        required: false
+      CONTAINER_REGISTRY_USERNAME:
+        required: false
+      CONTAINER_REGISTRY_PASSWORD:
+        required: false
+      GITOPS_KEY:
+        required: false
 
 permissions:
   id-token: write
@@ -113,7 +137,7 @@ jobs:
 
   release_gitops:
     if: ${{ github.event.inputs.release_gitops == 'true' }}
-    needs: [bump_version, release_docker]
+    needs: [ bump_version, release_docker ]
     uses: AibelDevs/action-toolbox/.github/workflows/tool-release-gitops-update.yaml@main
     with:
       push_commit: "true"
