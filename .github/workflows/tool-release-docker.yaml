@@ -71,7 +71,7 @@ jobs:
           release_override = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
           print(f"{release_override=}")
           
-          if release_override.startswith('next'):
+          if 'next.' in release_override:
               print("IS_PRE_RELEASE=true")
               set_env('IS_PRE_RELEASE', 'true')
           else:
