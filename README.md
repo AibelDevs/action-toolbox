@@ -1,7 +1,6 @@
 # action-toolbox
-shared github action
 
-
+A toolbox for automated PR checks and package releases.
 
 ### how to create sshkey
 
