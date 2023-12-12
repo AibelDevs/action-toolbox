@@ -9,6 +9,11 @@ on:
         type: string
         required: false
         default: '3.11'
+      config_toml:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
     outputs:
       has_source_key_secret:
         description: "Is SOURCE_KEY secret set"
