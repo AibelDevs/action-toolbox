@@ -48,18 +48,18 @@ Or if you have a private QUETZ server
 
 Below are the repository settings and branch protection rules which is recommended with these action tools
 
-## Lock PR to Squash merging
+#### Lock PR to Squash merging
 
 ![Pull_request_merge](./images/PR.png)
 
 <br /><br /><br /><br />
 
-## Add branch rule with require PR before merging
+#### Add branch rule with require PR before merging
 
 ![Branch_Protection](./images/BP_Rule.png)
 <br /><br /><br /><br />
 
-## Require status check to pass before merging
+#### Require status check to pass before merging
 
 Usually you will have to run the actions at least once on a new repository for the action names to appear.
 
