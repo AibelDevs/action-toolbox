@@ -6,22 +6,22 @@ on:
       release_pypi:
         description: 'Issue Pre-Release to PyPI'
         required: false
-        type: boolean
+        type: string
         default: true
       release_conda:
         description: 'Issue Pre-Release to conda'
         required: false
-        type: boolean
+        type: string
         default: true
       release_docker:
         description: 'Issue Pre-Release to docker'
         required: false
-        type: boolean
+        type: string
         default: true
       release_gitops:
         description: 'Issue Pre-Release to gitops'
         required: false
-        type: boolean
+        type: string
         default: true
     secrets:
       SOURCE_KEY:
