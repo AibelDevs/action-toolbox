@@ -1,0 +1,113 @@
+name: Default Release on push of new tag
+
+# triggered on a tagged release
+on:
+  workflow_call:
+    secrets:
+      SOURCE_KEY:
+        required: true
+      GITOPS_KEY:
+        required: false
+      CONTAINER_REGISTRY_URL:
+        required: false
+      CONTAINER_REGISTRY_USERNAME:
+        required: false
+      CONTAINER_REGISTRY_PASSWORD:
+        required: false
+      CONDA_API_TOKEN:
+        required: false
+      QUETZ_API_KEY:
+        required: false
+      QUETZ_URL:
+        required: false
+      PYPI_API_TOKEN:
+        required: false
+      CUSTOM_PYPI_USERNAME:
+        required: false
+      CUSTOM_PYPI_PASSWORD:
+        required: false
+      CUSTOM_PYPI_URL:
+        required: false
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  interpret_tag:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.interpret_tag.outputs.tagged_release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Read and output tag (remove 'v' prefix)
+        id: interpret_tag
+        shell: python
+        run: |
+          import os
+          
+          def set_output(name, value):
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+          
+          tag = os.getenv('GITHUB_REF').split('/')[-1]
+          if tag.startswith('v'):
+              tag = tag[1:]
+          
+          print(f"{tag=}")
+          set_output('tagged_release', tag)
+
+  load-config:
+    uses: ./.github/workflows/tool-load-config.yaml
+
+  release_pypi:
+    needs: [ load-config, interpret_tag ]
+    if: ${{ needs.load-config.outputs.pip_enabled == 'true' }}
+    uses: ./.github/workflows/tool-release-pip.yaml
+    with:
+      use_custom_pypi: ${{ needs.load-config.outputs.custom_pypi_server }}
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      CUSTOM_PYPI_USERNAME: ${{ secrets.CUSTOM_PYPI_USERNAME }}
+      CUSTOM_PYPI_PASSWORD: ${{ secrets.CUSTOM_PYPI_PASSWORD }}
+      CUSTOM_PYPI_URL: ${{ secrets.CUSTOM_PYPI_URL }}
+
+  release_conda:
+    needs: [ load-config, interpret_tag ]
+    if: ${{ needs.load-config.outputs.conda_enabled == 'true' }}
+    uses: ./.github/workflows/tool-release-conda.yaml
+    with:
+      use_quetz_server: ${{ needs.load-config.outputs.custom_quetz_server }}
+      push_conda: 'true'
+      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
+    secrets:
+      CONDA_API_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
+      QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
+      QUETZ_URL: ${{ secrets.QUETZ_URL }}
+
+  release_docker:
+    needs: [ load-config, interpret_tag ]
+    if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
+    uses: ./.github/workflows/tool-release-docker.yaml
+    with:
+      push_docker: 'true'
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      docker_tag_override: ${{ needs.interpret_tag.outputs.version }}
+    secrets:
+      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
+      CONTAINER_REGISTRY_USERNAME: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+      CONTAINER_REGISTRY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+
+  release_gitops:
+    needs: [ load-config, interpret_tag, release_docker ]
+    if: ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
+    uses: ./.github/workflows/tool-release-gitops-update.yaml
+    with:
+      push_commit: 'true'
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
+      release_tag_override: ${{ needs.interpret_tag.outputs.version }}
+    secrets:
+      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
+      GITOPS_KEY: ${{ secrets.GITOPS_KEY }}

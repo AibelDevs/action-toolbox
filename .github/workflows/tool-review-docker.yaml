@@ -7,11 +7,6 @@ on:
         type: string
         required: false
         default: '3.11'
-      config_toml_file:
-        description: "config file in repo for actions"
-        type: string
-        required: false
-        default: "action_config.toml"
     outputs:
       docker_review_str:
         description: 'Body of the comment'
@@ -86,10 +81,13 @@ jobs:
           echo ${{ secrets.CONTAINER_REGISTRY_PASSWORD }} | docker login ${{ secrets.CONTAINER_REGISTRY_URL }} -u ${{ secrets.CONTAINER_REGISTRY_USERNAME }} --password-stdin
           echo "login_success=true" >> $GITHUB_OUTPUT
 
+
   docker_build_tests:
     uses: ./.github/workflows/tool-release-docker.yaml
+    needs: load-config
     with:
       create_build_logs: 'true'
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
 

@@ -7,11 +7,6 @@ on:
         type: string
         required: false
         default: "3.11"
-      config_toml_file:
-        description: "config file in repo for actions"
-        type: string
-        required: false
-        default: "action_config.toml"
     outputs:
       gitops_review_str:
         description: "Body of the comment"
@@ -33,10 +28,13 @@ jobs:
 
   test_gitops:
     uses: ./.github/workflows/tool-release-gitops-update.yaml
+    needs: load-config
     with:
       push_commit: 'false'
       release_tag_override: "0.0.99"
       create_run_logs: 'true'
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
       GITOPS_KEY: ${{ secrets.GITOPS_KEY }}

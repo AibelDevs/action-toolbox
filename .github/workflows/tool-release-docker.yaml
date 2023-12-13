@@ -23,6 +23,16 @@ on:
         type: string
         required: false
         default: false
+      python_version:
+        description: 'Python version'
+        type: string
+        required: false
+        default: '3.11'
+      docker_matrix:
+        description: 'Docker matrix'
+        type: string
+        required: false
+        default: ''
     outputs:
       build_logs_str:
         description: 'Build logs'
@@ -40,21 +50,26 @@ env:
   BUILD_LOG_DIR: ${{ github.workspace }}
 
 jobs:
-  load-config:
-    uses: ./.github/workflows/tool-load-config.yaml
-
   build_docker:
     name: Build Docker "${{ matrix.docker.ref_name }}"
-    needs: load-config
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.load-config.outputs.docker_matrix) }}
+      matrix: ${{ fromJson(inputs.docker_matrix) }}
     steps:
       - name: Checkout git
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install toml==0.10.2
 
       - name: Check if release override contains "next"
         id: check_release_override
@@ -71,12 +86,71 @@ jobs:
           release_override = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
           print(f"{release_override=}")
           
-          if release_override.startswith('next'):
+          if 'next.' in release_override:
               print("IS_PRE_RELEASE=true")
               set_env('IS_PRE_RELEASE', 'true')
           else:
               print("IS_PRE_RELEASE=false")
               set_env('IS_PRE_RELEASE', 'false')
+
+      - name: Update pyproject.toml and package.json (if exists) on pre-release
+        if: env.IS_PRE_RELEASE == 'true'
+        env:
+          INPUT_DOCKER_TAG_OVERRIDE: ${{ inputs.docker_tag_override }}
+        shell: python
+        run: |
+            import os
+            import pathlib
+            import toml
+            import json
+            
+            def set_env(name, value):
+                with open(os.environ['GITHUB_ENV'], 'a') as fh:
+                    print(f'{name}={value}', file=fh)
+            
+            pyproject_tomls = list(pathlib.Path('').rglob('pyproject.toml'))
+            package_jsons = list(pathlib.Path('').rglob('package.json'))
+            version_override = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
+            print(f"{version_override=}")
+            
+            # Check if pyproject.toml exists
+            if len(pyproject_tomls) > 0:
+                print("Found pyproject.toml")
+                pyproject_toml = pyproject_tomls[0]
+                print(f"{pyproject_toml=}")
+                
+                # Read pyproject.toml
+                with open(pyproject_toml, 'r') as file:
+                    toml_data = toml.load(file)
+                
+                # Update pyproject.toml
+              
+                # replace next. with next to comply with PEP440
+                py_version_override = version_override.replace('-next.', 'dev')
+                print(f"{py_version_override=}")
+                toml_data['project']['version'] = py_version_override
+                
+                # Write pyproject.toml
+                with open(pyproject_toml, 'w') as file:
+                    toml.dump(toml_data, file)
+                print(toml_data)
+            
+            # Check if package.json exists
+            if len(package_jsons) > 0:
+                print("Found package.json")
+                package_json = package_jsons[0]
+                print(f"{package_json=}")
+                
+                # Read package.json
+                with open(package_json, 'r') as file:
+                    json_data = json.load(file)
+                
+                # Update package.json
+                json_data['version'] = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
+                
+                # Write package.json
+                with open(package_json, 'w') as file:
+                    json.dump(json_data, file)
 
       - name: Build docker image with ${{ steps.set_release_tag.outputs.docker_tag }} tag
         if: inputs.create_build_logs == 'false'
@@ -118,6 +192,7 @@ jobs:
         if: inputs.docker_use_latest == 'true' && inputs.docker_push == 'true' && env.IS_PRE_RELEASE == 'false'
         run: |
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
+
 
   summarize_build_logs:
     if: inputs.create_build_logs == 'true'

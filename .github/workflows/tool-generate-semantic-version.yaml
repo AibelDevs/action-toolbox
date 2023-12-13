@@ -7,7 +7,7 @@ on:
         type: string
         required: false
         default: "3.11"
-      config_toml:
+      config_toml_file:
         description: "config file in repo for actions"
         type: string
         required: false
@@ -26,13 +26,30 @@ on:
       SOURCE_KEY:
         required: false
 
+env:
+  RELEASE_OVERRIDE: ${{ inputs.release_override }}
+
 jobs:
+  load-config:
+    if: ${{ inputs.release_override == '' }}
+    uses: ./.github/workflows/tool-load-config.yaml
+    with:
+      config_toml_file: ${{ inputs.config_toml_file }}
+
+  pr-version-calculate:
+    uses: ./.github/workflows/tool-pr-version-calculate.yaml
+    needs: load-config
+    with:
+      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
+      config_toml_file: ${{ inputs.config_toml_file }}
+
   generateRelease:
+    needs: pr-version-calculate
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: write
-
     steps:
       - name: Checkout git
         uses: actions/checkout@v4
@@ -40,6 +57,21 @@ jobs:
           fetch-depth: 0
           ref: ${{github.ref_name}}
           ssh-key: ${{ secrets.SOURCE_KEY }}
+
+      - name: Check PR for any labels suggesting release_override
+        if: ${{ inputs.release_override == '' }}
+        shell: python
+        run: |
+          import os
+          
+          def set_env(name, value):
+            with open(os.environ['GITHUB_ENV'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+          
+          bump_level = "${{ needs.pr-version-calculate.outputs.calculated_bump_level }}"
+          if bump_level != '':
+            set_env('RELEASE_OVERRIDE', bump_level)  
+          
 
       - name: Set up Python ${{ inputs.python_version }}
         uses: actions/setup-python@v3
@@ -51,8 +83,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install python-semantic-release=="${{ inputs.python_semantic_release_pkg }}"
 
-      - name: Run semantic release force ${{inputs.release_override}}
+      - name: Run semantic release force ${{ env.RELEASE_OVERRIDE }}
         run: |
-          semantic-release --config ${{ inputs.config_toml }} version --changelog ${{inputs.release_override}} --vcs-release
+          semantic-release --config ${{ inputs.config_toml_file }} version --changelog ${{ env.RELEASE_OVERRIDE }} --vcs-release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

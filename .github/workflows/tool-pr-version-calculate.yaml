@@ -1,0 +1,137 @@
+# A tool to ensure that the pull requests is correctly formatted for changelog and semantic release
+name: tool-pr-version-calculate
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: 'Python version'
+        type: string
+        required: false
+        default: '3.11'
+      config_toml_data:
+        description: "Toml config file data for actions base64 encoded"
+        type: string
+        required: false
+        default: ""
+      config_toml_file:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
+    outputs:
+      calculated_version:
+        description: "Calculated version"
+        value: ${{ jobs.version_calc.outputs.calculated_version }}
+      calculated_bump_level:
+        description: "Calculated bump level"
+        value: ${{ jobs.version_calc.outputs.calculated_bump_level }}
+    secrets:
+      SOURCE_KEY:
+        required: false
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  version_calc:
+    name: Calculate semantic release version
+    runs-on: ubuntu-latest
+    outputs:
+      calculated_version: ${{ steps.calculate_version.outputs.version }}
+      calculated_bump_level: ${{ steps.calculate_version.outputs.calculated_bump_level }}
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          fetch-depth: 0
+
+      - name: Set up Python ${{ inputs.python_version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install toml==0.10.2 python-semantic-release==8.1.1
+
+      - name: Check the calculated version from semantic release
+        shell: python
+        id: calculate_version
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          import subprocess
+          import os
+          import json
+          import base64
+          
+          def deserialize_str(s):
+            return base64.b64decode(s).decode('utf-8')
+
+          def set_output(name, value):
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+          
+          # Get up-to-date action_config.toml data from incoming PR branch.
+          toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
+          
+          label_names = json.loads(os.environ['LABELS'])
+          rel_labels = [l for l in label_names if l.startswith('release-')]
+          if len(rel_labels) == 0:
+            if os.environ['ADD_DEFAULT_LABEL'] == 'true':
+              rel_labels.append('release-skip')
+
+          # Command to execute
+          command = ["semantic-release", "--config", "${{ inputs.config_toml_file }}", "--noop", "version"]
+          
+          # Check if we need to force a release
+          pr_title = os.getenv('PR_TITLE')
+          valid_pr_title = ['fix: ', 'fix!: ', 'feat: ', 'feat!: ', 'chore: ']
+          
+          title_pr_release_map = {
+            'fix: ': 'patch',
+            'fix!: ': 'major',
+            'feat: ': 'minor',
+            'feat!: ': 'major',
+            'chore: ': 'skip'
+          }
+          forced_release = ''
+          if len(rel_labels) > 0:
+            if len(rel_labels) != 1:
+              print(f"WARNING! More than one release label found. Will use the first one. {rel_labels}", )
+            rel_label = rel_labels[0]
+            print("Release label found:", rel_labels[0])
+            if rel_label != "release-skip":
+              if rel_label == "release-auto":
+                # Use the pr_title_map to determine the release type
+                for key in title_pr_release_map.keys():
+                  if pr_title.startswith(key):
+                    forced_release = "--" + title_pr_release_map[key]
+                    command.append(forced_release)
+                    break
+              else:
+                forced_release = "--" + rel_label.split("-")[1]
+                command.append(forced_release)
+          
+          set_output('calculated_bump_level', forced_release)
+          print(command)          
+          # Running the command and capturing output
+          result = subprocess.run(command, capture_output=True, text=True)
+
+          # Extracting the output
+          output = result.stdout.strip()
+          
+          # print any errors
+          if result.stderr:
+              print(result.stderr)
+
+          # The version name should be in the output
+          print(f'Captured Version Name: "{output}"')
+          
+          # Set the output
+          set_output('version', str(output))

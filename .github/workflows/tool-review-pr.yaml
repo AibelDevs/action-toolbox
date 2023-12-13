@@ -8,6 +8,11 @@ on:
         type: string
         required: false
         default: '3.11'
+      config_toml_file:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
     outputs:
       pr_review_str:
         description: 'Body of the comment'
@@ -20,6 +25,18 @@ on:
         required: false
 
 jobs:
+  load-config:
+    uses: ./.github/workflows/tool-load-config.yaml
+    with:
+      config_toml_file: ${{ inputs.config_toml_file }}
+
+  pr-version-calculate:
+    uses: ./.github/workflows/tool-pr-version-calculate.yaml
+    needs: load-config
+    with:
+      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
+      config_toml_file: ${{ inputs.config_toml_file }}
+
   pr-lint-checker:
     uses: ./.github/workflows/tool-pr-linter.yaml
     secrets:
@@ -27,7 +44,7 @@ jobs:
 
   pr-review:
     name: Review PR
-    needs: pr-lint-checker
+    needs: [pr-lint-checker, pr-version-calculate ]
     runs-on: ubuntu-latest
     outputs:
       pr_review_str: ${{ steps.comment_body.outputs.body }}
@@ -71,7 +88,7 @@ jobs:
           else:
             body += "I found some pr-related issues:\n\n"
             set_output('PR_REVIEW_OK', 'false')
-                   
+          
           if check_pr_title is False:
             body += "\n * ❌ You need to start PR title with fix: feat: fix!: feat!: chore:"
           else:
@@ -87,7 +104,7 @@ jobs:
           else:
             body += "\n * ✅ SOURCE_KEY is set as a secret"
           
-          next_version = "${{ needs.pr-lint-checker.outputs.calculated_version }}"
+          next_version = "${{ needs.pr-version-calculate.outputs.calculated_version }}"
           body += f'\n * ✅ Calculated next version: "{next_version}"'
           
           # Set the output

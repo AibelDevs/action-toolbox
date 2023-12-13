@@ -8,11 +8,6 @@ on:
         type: string
         required: false
         default: "3.11"
-      config_toml:
-        description: "config file in repo for actions"
-        type: string
-        required: false
-        default: "action_config.toml"
       python_yaml_pkg:
         description: "ruamel.yaml pkg to use"
         type: string
@@ -33,6 +28,16 @@ on:
         type: string
         required: false
         default: "false"
+      docker_matrix:
+        description: "docker matrix"
+        type: string
+        required: false
+        default: ""
+      gitops_matrix:
+        description: "gitops matrix"
+        type: string
+        required: false
+        default: ""
     outputs:
       update_logs_str:
         description: 'Build logs'
@@ -50,19 +55,15 @@ env:
   BUILD_LOG_DIR: ${{ github.workspace }}
 
 jobs:
-  load-config:
-    uses: ./.github/workflows/tool-load-config.yaml
-
   generateRelease:
     name: Update Gitops "${{ matrix.gitops.name }}"
-    needs: load-config
     runs-on: ubuntu-latest
     outputs:
       update_log: ${{ steps.update_log.outputs.update_log }}
     strategy:
       fail-fast: false
       max-parallel: 1
-      matrix: ${{ fromJson(needs.load-config.outputs.gitops_matrix) }}
+      matrix: ${{ fromJson(inputs.gitops_matrix) }}
 #    permissions:
 #      id-token: write
 #      contents: write
@@ -89,7 +90,7 @@ jobs:
 
       - name: Collect gitops config
         env:
-          DOCKER_MATRIX: ${{ needs.load-config.outputs.docker_matrix }}
+          DOCKER_MATRIX: ${{ inputs.docker_matrix }}
         working-directory: ./gitops
         shell: python
         run: |
@@ -157,7 +158,7 @@ jobs:
 
   summarize_build_logs:
     if: inputs.create_run_logs == 'true'
-    needs: [generateRelease, load-config]
+    needs: generateRelease
     runs-on: ubuntu-latest
 
     outputs:
@@ -173,7 +174,7 @@ jobs:
       - name: Review Build Logs and
         id: summarize_build_logs  # Set an ID for this step to reference its outputs
         env:
-          GITOPS_MATRIX: ${{ needs.load-config.outputs.gitops_matrix }}
+          GITOPS_MATRIX: ${{ inputs.gitops_matrix }}
         shell: python
         run: |
           import os

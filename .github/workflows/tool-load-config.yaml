@@ -34,7 +34,7 @@ on:
       conda_enabled:
         description: 'Is conda enabled'
         value: ${{ jobs.config.outputs.conda_enabled }}
-      toml_data:
+      config_toml_data:
         description: 'toml data'
         value: ${{ jobs.config.outputs.toml_data }}
       custom_pypi_server:
@@ -95,6 +95,8 @@ jobs:
           import json
       
           def set_output(name, value, encode_it=False):
+              if isinstance(value, bool):
+                  value = str(value).lower()
               if encode_it:
                   value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
               with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
