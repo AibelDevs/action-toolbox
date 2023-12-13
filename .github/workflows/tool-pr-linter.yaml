@@ -10,7 +10,12 @@ on:
         required: false
         default: '3.11'
       config_toml_data:
-        description: "Toml config file for actions base64 encoded"
+        description: "Toml config file data for actions base64 encoded"
+        type: string
+        required: false
+        default: ""
+      config_toml_file:
+        description: "config file in repo for actions"
         type: string
         required: false
         default: "action_config.toml"
@@ -27,6 +32,9 @@ on:
       calculated_version:
         description: "Calculated version"
         value: ${{ jobs.lintCheck.outputs.calculated_version }}
+      calculated_bump_level:
+        description: "Calculated bump level"
+        value: ${{ jobs.lintCheck.outputs.calculated_bump_level }}
     secrets:
       SOURCE_KEY:
         required: false
@@ -230,7 +238,7 @@ jobs:
               rel_labels.append('release-skip')
 
           # Command to execute
-          command = ["semantic-release", "--config", "${{ inputs.config_toml }}", "--noop", "version"]
+          command = ["semantic-release", "--config", "${{ inputs.config_toml_file }}", "--noop", "version"]
           
           # Check if we need to force a release
           pr_title = os.getenv('PR_TITLE')
@@ -243,7 +251,7 @@ jobs:
             'feat!: ': 'major',
             'chore: ': 'skip'
           }
-          
+          forced_release = ''
           if len(rel_labels) > 0:
             if len(rel_labels) != 1:
               print(f"WARNING! More than one release label found. Will use the first one. {rel_labels}", )
@@ -260,7 +268,8 @@ jobs:
               else:
                 forced_release = "--" + rel_label.split("-")[1]
                 command.append(forced_release)
-
+          
+          set_output('calculated_bump_level', forced_release)
           print(command)          
           # Running the command and capturing output
           result = subprocess.run(command, capture_output=True, text=True)

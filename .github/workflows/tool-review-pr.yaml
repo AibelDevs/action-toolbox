@@ -8,6 +8,11 @@ on:
         type: string
         required: false
         default: '3.11'
+      config_toml_file:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
     outputs:
       pr_review_str:
         description: 'Body of the comment'
@@ -22,12 +27,15 @@ on:
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
+    with:
+      config_toml_file: ${{ inputs.config_toml_file }}
 
   pr-lint-checker:
     uses: ./.github/workflows/tool-pr-linter.yaml
     needs: load-config
     with:
       config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
+      config_toml_file: ${{ inputs.config_toml_file }}
     secrets:
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
 

@@ -7,11 +7,6 @@ on:
         type: string
         required: false
         default: '3.11'
-      config_toml_file:
-        description: "config file in repo for actions"
-        type: string
-        required: false
-        default: "action_config.toml"
     outputs:
       docker_review_str:
         description: 'Body of the comment'
