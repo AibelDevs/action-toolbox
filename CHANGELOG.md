@@ -2,6 +2,13 @@
 
 
 
+## v1.1.1 (2023-12-13)
+
+### Fix
+
+* fix: Fix bug in pylint linting and issues from previous workflow split (#11) ([`1eb661e`](https://github.com/AibelDevs/action-toolbox/commit/1eb661e4338a3aed2fde093240687d5602850d44))
+
+
 ## v1.1.0 (2023-12-13)
 
 ### Feature
