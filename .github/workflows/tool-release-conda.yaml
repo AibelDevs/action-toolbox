@@ -127,6 +127,8 @@ jobs:
               with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
                   print(f"{name}={value}", file=fh)
 
+          def deserialize_str(s):
+            return base64.b64decode(s).decode('utf-8')
 
           def convert_to_byte_str(var_str: str) -> str:
               encoded_bytes = base64.b64encode(var_str.encode("utf-8"))
