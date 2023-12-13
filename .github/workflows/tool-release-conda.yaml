@@ -320,7 +320,7 @@ jobs:
       - name: Build
         if: ${{ inputs.use_quetz_server == 'false' && inputs.push_conda == 'true' }}
         run: |
-          conda mambabuild . ${{ env.BUILD_ARGS }} --label ${{ needs.create_variant_matrix.outputs.conda_label }} --user ${{ needs.create_variant_matrix.outputs.conda_owner }} --label ${{ needs.create_variant_matrix.outputs.conda_label }} --token ${{ secrets.CONDA_API_TOKEN }}
+          conda mambabuild . ${{ env.BUILD_ARGS }} --user ${{ needs.create_variant_matrix.outputs.conda_owner }} --label ${{ needs.create_variant_matrix.outputs.conda_label }} --token ${{ secrets.CONDA_API_TOKEN }}
         working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
 
       - name: Upload packages to Quetz Server
