@@ -22,6 +22,8 @@ on:
 jobs:
   pr-lint-checker:
     uses: ./.github/workflows/tool-pr-linter.yaml
+    with:
+      config_toml_data: ${{ needs.load-config.outputs.toml_data }}
     secrets:
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
 

@@ -9,8 +9,8 @@ on:
         type: string
         required: false
         default: '3.11'
-      config_toml:
-        description: "config file in repo for actions"
+      config_toml_data:
+        description: "Toml config file for actions base64 encoded"
         type: string
         required: false
         default: "action_config.toml"
@@ -36,13 +36,9 @@ permissions:
   contents: read
 
 jobs:
-  load-config:
-    uses: ./.github/workflows/tool-load-config.yaml
-
   lintCheck:
     name: Python Check Pull Request
     runs-on: ubuntu-latest
-    needs: load-config
     outputs:
       has_source_key_secret: ${{ steps.check-source-key.outputs.has_source_key_secret }}
       check_pr_title: ${{ steps.check_pr_title.outputs.check_pr_title }}
@@ -225,7 +221,7 @@ jobs:
                 print(f'{name}={value}', file=fh)
           
           # Get up-to-date action_config.toml data from incoming PR branch.
-          toml_data = json.loads(deserialize_str(b"${{ needs.load-config.outputs.toml_data }}"))
+          toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
           
           label_names = json.loads(os.environ['LABELS'])
           rel_labels = [l for l in label_names if l.startswith('release-')]
