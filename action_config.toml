@@ -58,7 +58,8 @@ use_custom_pypi_server = true
 enabled = false
 #pkg_name_override
 recipe_dir = "./conda"
-owner = "Krandedev"
+owner = "Krande"
+extra_conda_dep_channels = ["krande"]
 use_custom_quetz_server = true
 quetz_channel = "test"
 #
