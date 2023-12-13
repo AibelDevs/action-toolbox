@@ -83,8 +83,7 @@ jobs:
           label_names = json.loads(os.environ['LABELS'])
           rel_labels = [l for l in label_names if l.startswith('release-')]
           if len(rel_labels) == 0:
-            if os.environ['ADD_DEFAULT_LABEL'] == 'true':
-              rel_labels.append('release-skip')
+            rel_labels.append('release-skip')
 
           # Command to execute
           command = ["semantic-release", "--config", "${{ inputs.config_toml_file }}", "--noop", "version"]
