@@ -36,16 +36,16 @@ permissions:
 
 jobs:
   load-config:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-load-config.yaml@main
+    uses: ./.github/workflows/tool-load-config.yaml
 
   pr-review:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-pr.yaml@main
+    uses: ./.github/workflows/tool-review-pr.yaml
     needs: load-config
     secrets:
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
 
   python-review:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-python.yaml@main
+    uses: ./.github/workflows/tool-review-python.yaml
     with:
       use_pylint: false
     needs: load-config
@@ -60,7 +60,7 @@ jobs:
       QUETZ_URL: ${{ secrets.QUETZ_URL }}
 
   docker-review:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-docker.yaml@main
+    uses: ./.github/workflows/tool-review-docker.yaml
     needs: load-config
     if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
     secrets:
@@ -69,7 +69,7 @@ jobs:
       CONTAINER_REGISTRY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
   gitops-review:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-review-gitops.yaml@main
+    uses: ./.github/workflows/tool-review-gitops.yaml
     needs: load-config
     if: ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
     secrets:

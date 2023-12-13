@@ -59,12 +59,12 @@ jobs:
           set_output('tagged_release', tag)
 
   load-config:
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-load-config.yaml@main
+    uses: ./.github/workflows/tool-load-config.yaml
 
   release_pypi:
     needs: [ load-config, interpret_tag ]
     if: ${{ needs.load-config.outputs.pip_enabled == 'true' }}
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-release-pip.yaml@main
+    uses: ./.github/workflows/tool-release-pip.yaml
     with:
       use_custom_pypi: ${{ needs.load-config.outputs.custom_pypi_server }}
     secrets:
@@ -76,7 +76,7 @@ jobs:
   release_conda:
     needs: [ load-config, interpret_tag ]
     if: ${{ needs.load-config.outputs.conda_enabled == 'true' }}
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-release-conda.yaml@main
+    uses: ./.github/workflows/tool-release-conda.yaml
     with:
       use_quetz_server: ${{ needs.load-config.outputs.custom_quetz_server }}
       push_conda: 'true'
@@ -88,7 +88,7 @@ jobs:
   release_docker:
     needs: [ load-config, interpret_tag ]
     if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-release-docker.yaml@main
+    uses: ./.github/workflows/tool-release-docker.yaml
     with:
       push_docker: 'true'
       docker_tag_override: ${{ needs.interpret_tag.outputs.version }}
@@ -100,7 +100,7 @@ jobs:
   release_gitops:
     needs: [ load-config, interpret_tag, release_docker ]
     if: ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-release-gitops-update.yaml@main
+    uses: ./.github/workflows/tool-release-gitops-update.yaml
     with:
       push_commit: 'true'
       release_tag_override: ${{ needs.interpret_tag.outputs.version }}
