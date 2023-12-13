@@ -28,6 +28,11 @@ on:
         type: string
         required: false
         default: '3.11'
+      docker_matrix:
+        description: 'Docker matrix'
+        type: string
+        required: false
+        default: ''
     outputs:
       build_logs_str:
         description: 'Build logs'
@@ -45,16 +50,12 @@ env:
   BUILD_LOG_DIR: ${{ github.workspace }}
 
 jobs:
-  load-config:
-    uses: ./.github/workflows/tool-load-config.yaml
-
   build_docker:
     name: Build Docker "${{ matrix.docker.ref_name }}"
-    needs: load-config
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.load-config.outputs.docker_matrix) }}
+      matrix: ${{ fromJson(inputs.docker_matrix) }}
     steps:
       - name: Checkout git
         uses: actions/checkout@v4
@@ -191,6 +192,7 @@ jobs:
         if: inputs.docker_use_latest == 'true' && inputs.docker_push == 'true' && env.IS_PRE_RELEASE == 'false'
         run: |
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
+
 
   summarize_build_logs:
     if: inputs.create_build_logs == 'true'

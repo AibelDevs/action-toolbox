@@ -91,6 +91,7 @@ jobs:
     uses: ./.github/workflows/tool-release-docker.yaml
     with:
       push_docker: 'true'
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
       docker_tag_override: ${{ needs.interpret_tag.outputs.version }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
@@ -103,6 +104,8 @@ jobs:
     uses: ./.github/workflows/tool-release-gitops-update.yaml
     with:
       push_commit: 'true'
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
       release_tag_override: ${{ needs.interpret_tag.outputs.version }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
