@@ -2,6 +2,13 @@
 
 
 
+## v1.1.0 (2023-12-13)
+
+### Feature
+
+* feat: Add simplified default tools and fix pre-release bumping py and json projects (#10) ([`fe699a8`](https://github.com/AibelDevs/action-toolbox/commit/fe699a8171999e940ef8c58c02f072a9ab6f7e2b))
+
+
 ## v1.0.0 (2023-12-12)
 
 ### Breaking
