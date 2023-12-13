@@ -89,6 +89,7 @@ jobs:
 
   docker_build_tests:
     uses: ./.github/workflows/tool-release-docker.yaml
+    needs: load-config
     with:
       create_build_logs: 'true'
       docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
