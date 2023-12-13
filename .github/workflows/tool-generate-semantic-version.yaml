@@ -70,7 +70,7 @@ jobs:
           
           bump_level = "${{ needs.pr-version-calculate.outputs.calculated_bump_level }}"
           if bump_level != '':
-            set_env('RELEASE_OVERRIDE', 'false')  
+            set_env('RELEASE_OVERRIDE', bump_level)  
           
 
       - name: Set up Python ${{ inputs.python_version }}
