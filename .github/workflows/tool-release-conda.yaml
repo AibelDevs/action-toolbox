@@ -312,8 +312,15 @@ jobs:
           EOF
 
       - name: Build
+        if: ${{ inputs.use_quetz_server == 'true' && inputs.push_conda == 'true' }}
         run: |
           conda mambabuild . ${{ env.BUILD_ARGS }}
+        working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
+
+      - name: Build
+        if: ${{ inputs.use_quetz_server == 'false' && inputs.push_conda == 'true' }}
+        run: |
+          conda mambabuild . ${{ env.BUILD_ARGS }} --label ${{ needs.create_variant_matrix.outputs.conda_label }} --user ${{ needs.create_variant_matrix.outputs.conda_owner }} --label ${{ needs.create_variant_matrix.outputs.conda_label }} --token ${{ secrets.CONDA_API_TOKEN }}
         working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
 
       - name: Upload packages to Quetz Server
@@ -344,14 +351,3 @@ jobs:
               else:
                 raise e
           EOF
-
-      - name: upload to anaconda
-        if: ${{ inputs.use_quetz_server == 'false' && inputs.push_conda == 'true' }}
-        run: |
-          find ${{ env.ARTIFACTS_DIR }} -name *.conda | while read file
-          do
-              echo $file
-              anaconda upload $file -u ${{ needs.create_variant_matrix.outputs.conda_owner }} --force --label ${{ needs.create_variant_matrix.outputs.conda_label }} -t ${{ secrets.CONDA_API_TOKEN }}
-          done
-        env:
-          ANACONDA_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
