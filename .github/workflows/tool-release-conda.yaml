@@ -261,7 +261,7 @@ jobs:
             python=3.11
             boa=0.16.0
             toml=0.10.2
-            anaconda-client=1.12.2
+            anaconda-client=1.12.1
             quetz-client=0.5.0
 
       - name: Override version
