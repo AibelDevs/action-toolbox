@@ -36,18 +36,15 @@ jobs:
     with:
       config_toml_file: ${{ inputs.config_toml_file }}
 
-  pr-lint-checker:
-    if: ${{ inputs.release_override == '' }}
-    uses: ./.github/workflows/tool-pr-linter.yaml
+  pr-version-calculate:
+    uses: ./.github/workflows/tool-pr-version-calculate.yaml
     needs: load-config
     with:
       config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
       config_toml_file: ${{ inputs.config_toml_file }}
-    secrets:
-      SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
 
   generateRelease:
-    needs: pr-lint-checker
+    needs: pr-version-calculate
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -71,7 +68,7 @@ jobs:
             with open(os.environ['GITHUB_ENV'], 'a') as fh:
                 print(f'{name}={value}', file=fh)
           
-          bump_level = "${{ needs.pr-lint-checker.outputs.calculated_bump_level }}"
+          bump_level = "${{ needs.pr-version-calculate.outputs.calculated_bump_level }}"
           if bump_level != '':
             set_env('RELEASE_OVERRIDE', 'false')  
           

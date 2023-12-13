@@ -9,16 +9,6 @@ on:
         type: string
         required: false
         default: '3.11'
-      config_toml_data:
-        description: "Toml config file data for actions base64 encoded"
-        type: string
-        required: false
-        default: ""
-      config_toml_file:
-        description: "config file in repo for actions"
-        type: string
-        required: false
-        default: "action_config.toml"
     outputs:
       has_source_key_secret:
         description: "Is SOURCE_KEY secret set"
@@ -29,12 +19,6 @@ on:
       check_release_label:
         description: "Is release label set"
         value: ${{ jobs.lintCheck.outputs.contains_release_label }}
-      calculated_version:
-        description: "Calculated version"
-        value: ${{ jobs.lintCheck.outputs.calculated_version }}
-      calculated_bump_level:
-        description: "Calculated bump level"
-        value: ${{ jobs.lintCheck.outputs.calculated_bump_level }}
     secrets:
       SOURCE_KEY:
         required: false
@@ -51,7 +35,6 @@ jobs:
       has_source_key_secret: ${{ steps.check-source-key.outputs.has_source_key_secret }}
       check_pr_title: ${{ steps.check_pr_title.outputs.check_pr_title }}
       contains_release_label: ${{ steps.check_release_label.outputs.contains_release_label }}
-      calculated_version: ${{ steps.calculate_version.outputs.version }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -63,11 +46,6 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ inputs.python_version }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install toml==0.10.2 python-semantic-release==8.1.1
 
       - name: check if SOURCE_KEY is set as a secret
         id: check-source-key
@@ -196,7 +174,6 @@ jobs:
         
             run();
 
-
       - name: If ADD_DEFAULT_LABEL is true, add release-skip label
         if: env.ADD_DEFAULT_LABEL == 'true'
         uses: actions/github-script@v7
@@ -208,81 +185,3 @@ jobs:
               repo: context.repo.repo,
               labels: ['release-skip']
             })
-
-      - name: Check the calculated version from semantic release
-        shell: python
-        id: calculate_version
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
-        run: |
-          import subprocess
-          import os
-          import json
-          import base64
-          
-          def deserialize_str(s):
-            return base64.b64decode(s).decode('utf-8')
-
-          def set_output(name, value):
-            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-                print(f'{name}={value}', file=fh)
-          
-          # Get up-to-date action_config.toml data from incoming PR branch.
-          toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
-          
-          label_names = json.loads(os.environ['LABELS'])
-          rel_labels = [l for l in label_names if l.startswith('release-')]
-          if len(rel_labels) == 0:
-            if os.environ['ADD_DEFAULT_LABEL'] == 'true':
-              rel_labels.append('release-skip')
-
-          # Command to execute
-          command = ["semantic-release", "--config", "${{ inputs.config_toml_file }}", "--noop", "version"]
-          
-          # Check if we need to force a release
-          pr_title = os.getenv('PR_TITLE')
-          valid_pr_title = ['fix: ', 'fix!: ', 'feat: ', 'feat!: ', 'chore: ']
-          
-          title_pr_release_map = {
-            'fix: ': 'patch',
-            'fix!: ': 'major',
-            'feat: ': 'minor',
-            'feat!: ': 'major',
-            'chore: ': 'skip'
-          }
-          forced_release = ''
-          if len(rel_labels) > 0:
-            if len(rel_labels) != 1:
-              print(f"WARNING! More than one release label found. Will use the first one. {rel_labels}", )
-            rel_label = rel_labels[0]
-            print("Release label found:", rel_labels[0])
-            if rel_label != "release-skip":
-              if rel_label == "release-auto":
-                # Use the pr_title_map to determine the release type
-                for key in title_pr_release_map.keys():
-                  if pr_title.startswith(key):
-                    forced_release = "--" + title_pr_release_map[key]
-                    command.append(forced_release)
-                    break
-              else:
-                forced_release = "--" + rel_label.split("-")[1]
-                command.append(forced_release)
-          
-          set_output('calculated_bump_level', forced_release)
-          print(command)          
-          # Running the command and capturing output
-          result = subprocess.run(command, capture_output=True, text=True)
-
-          # Extracting the output
-          output = result.stdout.strip()
-          
-          # print any errors
-          if result.stderr:
-              print(result.stderr)
-
-          # The version name should be in the output
-          print(f'Captured Version Name: "{output}"')
-          
-          # Set the output
-          set_output('version', str(output))
