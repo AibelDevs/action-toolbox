@@ -34,7 +34,7 @@ on:
       conda_enabled:
         description: 'Is conda enabled'
         value: ${{ jobs.config.outputs.conda_enabled }}
-      toml_data:
+      config_toml_data:
         description: 'toml data'
         value: ${{ jobs.config.outputs.toml_data }}
       custom_pypi_server:
