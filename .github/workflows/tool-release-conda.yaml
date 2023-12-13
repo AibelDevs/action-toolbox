@@ -41,7 +41,7 @@ on:
         description: "Toml config file for actions base64 encoded"
         type: string
         required: false
-        default: "action_config.toml"
+        default: ""
     secrets:
       CONDA_API_TOKEN:
         required: false
@@ -92,6 +92,8 @@ jobs:
         shell: bash -l {0}
     outputs:
       final_matrix: ${{ steps.create_matrix.outputs.final_matrix }}
+      conda_owner: ${{ steps.create_matrix.outputs.conda_owner }}
+      conda_label: ${{ steps.create_matrix.outputs.conda_label }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -189,6 +191,11 @@ jobs:
           
           toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
           conda_config = toml_data["tool"]["python"]['conda']
+          conda_owner = conda_config.get('owner', 'unset')
+          set_output('conda_owner', conda_owner)
+          conda_label = conda_config.get('label', 'main')
+          set_output('conda_label', conda_label)
+          
           extra_conda_channels = conda_config.get('extra_conda_dep_channels', [])
           
           extra_build_str = ""
@@ -344,7 +351,7 @@ jobs:
           find ${{ env.ARTIFACTS_DIR }} -name *.conda | while read file
           do
               echo $file
-              anaconda upload $file
+              anaconda upload $file -u ${{ needs.create_variant_matrix.outputs.conda_owner }} --force --label ${{ needs.create_variant_matrix.outputs.conda_label }}
           done
         env:
           ANACONDA_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
