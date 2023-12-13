@@ -351,7 +351,7 @@ jobs:
           find ${{ env.ARTIFACTS_DIR }} -name *.conda | while read file
           do
               echo $file
-              anaconda upload $file -u ${{ needs.create_variant_matrix.outputs.conda_owner }} --force --label ${{ needs.create_variant_matrix.outputs.conda_label }}
+              anaconda upload $file -u ${{ needs.create_variant_matrix.outputs.conda_owner }} --force --label ${{ needs.create_variant_matrix.outputs.conda_label }} -t ${{ secrets.CONDA_API_TOKEN }}
           done
         env:
           ANACONDA_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
