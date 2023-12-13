@@ -1,5 +1,5 @@
 # A tool to ensure that the pull requests is correctly formatted for changelog and semantic release
-name: tool-pr-checker
+name: tool-pr-version-calculate
 
 on:
   workflow_call:
@@ -36,7 +36,7 @@ permissions:
 
 jobs:
   version_calc:
-    name: Python Check Pull Request
+    name: Calculate semantic release version
     runs-on: ubuntu-latest
     outputs:
       calculated_version: ${{ steps.calculate_version.outputs.version }}

@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   lintCheck:
-    name: Python Check Pull Request
+    name: Check Pull Request
     runs-on: ubuntu-latest
     outputs:
       has_source_key_secret: ${{ steps.check-source-key.outputs.has_source_key_secret }}
