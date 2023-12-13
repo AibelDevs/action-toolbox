@@ -7,22 +7,22 @@ on:
         description: 'Issue Pre-Release to PyPI'
         required: false
         type: string
-        default: true
+        default: false
       release_conda:
         description: 'Issue Pre-Release to conda'
         required: false
         type: string
-        default: true
+        default: false
       release_docker:
         description: 'Issue Pre-Release to docker'
         required: false
         type: string
-        default: true
+        default: false
       release_gitops:
         description: 'Issue Pre-Release to gitops'
         required: false
         type: string
-        default: true
+        default: false
     secrets:
       SOURCE_KEY:
         required: false
@@ -126,7 +126,7 @@ jobs:
 
   release_docker:
     if: ${{ github.event.inputs.release_docker == 'true' }}
-    needs: bump_version
+    needs: [bump_version, load-config ]
     uses: ./.github/workflows/tool-release-docker.yaml
     with:
       docker_tag_override: ${{ needs.bump_version.outputs.current_version }}
@@ -139,7 +139,7 @@ jobs:
 
   release_gitops:
     if: ${{ github.event.inputs.release_gitops == 'true' }}
-    needs: [ bump_version, release_docker ]
+    needs: [ bump_version, release_docker, load-config ]
     uses: ./.github/workflows/tool-release-gitops-update.yaml
     with:
       push_commit: "true"
