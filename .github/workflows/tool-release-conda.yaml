@@ -84,14 +84,115 @@ jobs:
 
 
   create_variant_matrix:
-    uses: ./.github/workflows/tool-conda-variants-matrix.yaml
     needs: extract_conda_meta
-    with:
-      python_versions: ${{ inputs.python_versions }}
-      platforms: ${{ inputs.platforms }}
-      variants_input: ${{ inputs.variants_input }}
-      add_build_args: ${{ inputs.add_build_args }}
-      recipe_dir: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
+    name: Create variant matrix
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    outputs:
+      final_matrix: ${{ steps.create_matrix.outputs.final_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - uses: mamba-org/setup-micromamba@v1 # https://github.com/mamba-org/setup-micromamba
+        with:
+          environment-name: build-env
+          cache-environment: true
+          condarc: |
+            channel_priority: strict
+            channels:
+              - conda-forge
+          create-args: >-
+            python=3.11
+            boa=0.16.0
+
+      - name: create matrix
+        id: create_matrix
+        run: |
+          # Running "shell: python" appears to only use the system python
+
+          python - <<EOF
+          import os
+          import base64
+          import itertools
+          import json
+          import pathlib
+
+          from boa.core.utils import get_config
+
+
+          def set_output(name, value):
+              with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+                  print(f"{name}={value}", file=fh)
+
+
+          def convert_to_byte_str(var_str: str) -> str:
+              encoded_bytes = base64.b64encode(var_str.encode("utf-8"))
+              var_bytes_str = encoded_bytes.decode("utf-8")
+              return var_bytes_str
+
+
+          def variants_matrix_gen(recipe_dir, python, os_variants):
+              combined_spec, config = get_config(recipe_dir)
+              print(f"combined_spec: {combined_spec}")          
+              matrix = {"builds": []}
+              variants = []
+              for key, value in combined_spec.items():
+                  if not isinstance(value, list):
+                      continue
+                  if len(value) < 2:
+                      continue
+                  for val in value:
+                      var_dict = {key: val}
+                      variants.append(var_dict)
+
+              os_map = {
+                  "ubuntu-latest": "linux",
+                  "windows-latest": "win",
+                  "macos-latest": "osx",
+              }
+
+              # use itertools to make final build combinations of conda variants, python versions and os's
+              if len(variants) == 0:
+                  var_dict = {"empty": "empty"}
+                  variants.append(var_dict)
+
+              itertools_product = itertools.product(python.split(","), os_variants.split(","), variants)
+              for python_version, platform, var_dict in itertools_product:
+                  build_args = f"--python {python_version}"
+                  os_short = os_map[platform] 
+                  key, val = list(var_dict.items())[0]
+                  if key != "empty":
+                    build_args += f' --variants="{var_dict}"'
+                    header_name = f"{os_short}-{python_version}-{key}={val}"
+                  else:
+                    header_name = f"{os_short}-{python_version}"
+
+                  run_object = {
+                      "os": platform,
+                      "os_short": os_short,
+                      "python": python_version,
+                      "key": key,
+                      "value": val,
+                      "header_name": header_name,
+                      "build_args": convert_to_byte_str(build_args),
+                  }
+                  matrix["builds"].append(run_object)
+              return matrix
+
+          recipe_dir = "${{ needs.extract_conda_meta.outputs.recipe_dir }}"
+          add_build_args = "${{ inputs.add_build_args }}"
+          python_versions = "${{ inputs.python_versions }}"
+          platforms = "${{ inputs.platforms }}"
+          variants_in = "${{ inputs.variants_input }}"
+
+          final_matrix = variants_matrix_gen(recipe_dir, python_versions, platforms)
+          set_output('final_matrix', json.dumps(final_matrix))
+          print(final_matrix)
+          EOF
+  
 
   conda_build_and_upload:
     name: Build "${{ matrix.builds.header_name }}"
