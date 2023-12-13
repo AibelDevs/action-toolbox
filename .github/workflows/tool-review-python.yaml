@@ -68,6 +68,7 @@ jobs:
     with:
       push_conda: 'false'
       pr_review: 'true'
+      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
 
   python-review-str:
     name: Review Python Configuration

@@ -1,4 +1,4 @@
-name: tool-release-conda
+name: tool-conda-variant-matrix
 
 on:
   workflow_call:

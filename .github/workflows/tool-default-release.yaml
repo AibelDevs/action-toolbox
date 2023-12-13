@@ -80,6 +80,7 @@ jobs:
     with:
       use_quetz_server: ${{ needs.load-config.outputs.custom_quetz_server }}
       push_conda: 'true'
+      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
     secrets:
       CONDA_API_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
       QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
