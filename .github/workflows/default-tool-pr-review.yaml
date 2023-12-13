@@ -46,8 +46,6 @@ jobs:
 
   python-review:
     uses: ./.github/workflows/tool-review-python.yaml
-    with:
-      use_pylint: false
     needs: load-config
     if: ${{ needs.load-config.outputs.python_enabled == 'true' }}
     secrets:
