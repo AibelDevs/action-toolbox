@@ -83,7 +83,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install python-semantic-release=="${{ inputs.python_semantic_release_pkg }}"
 
-      - name: Run semantic release force ${{inputs.release_override}}
+      - name: Run semantic release force ${{ env.RELEASE_OVERRIDE }}
         run: |
           semantic-release --config ${{ inputs.config_toml_file }} version --changelog ${{ env.RELEASE_OVERRIDE }} --vcs-release
         env:
