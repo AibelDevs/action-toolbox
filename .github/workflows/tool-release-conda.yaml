@@ -261,7 +261,7 @@ jobs:
             python=3.11
             boa=0.16.0
             toml=0.10.2
-            anaconda-client=1.12.1
+            anaconda-client=1.12.2
             quetz-client=0.5.0
 
       - name: Override version
@@ -351,7 +351,7 @@ jobs:
           find ${{ env.ARTIFACTS_DIR }} -name *.conda | while read file
           do
               echo $file
-              anaconda upload $file -u ${{ needs.create_variant_matrix.outputs.conda_owner }} --force --label ${{ needs.create_variant_matrix.outputs.conda_label }} --token ${{ secrets.CONDA_API_TOKEN }}
+              anaconda upload $file -u ${{ needs.create_variant_matrix.outputs.conda_owner }} --force --label ${{ needs.create_variant_matrix.outputs.conda_label }} -t ${{ secrets.CONDA_API_TOKEN }}
           done
         env:
           ANACONDA_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
