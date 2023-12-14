@@ -308,14 +308,20 @@ jobs:
             print(f"BUILD_ARGS={build_args}", file=fh)
           EOF
 
-      - name: Build
+      - name: Build for quetz server
         if: ${{ inputs.use_quetz_server == 'true' }}
         run: |
           conda mambabuild . ${{ env.BUILD_ARGS }}  --output-folder ${{ env.ARTIFACTS_DIR }}
         working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
 
-      - name: Build
-        if: ${{ inputs.use_quetz_server == 'false' }}
+      - name: Build for conda
+        if: ${{ inputs.use_quetz_server == 'false' && inputs.push_conda == 'false' }}
+        run: |
+          conda mambabuild . ${{ env.BUILD_ARGS }}
+        working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
+
+      - name: Build for conda and upload
+        if: ${{ inputs.use_quetz_server == 'false' && inputs.push_conda == 'true' }}
         run: |
           conda mambabuild . ${{ env.BUILD_ARGS }} --user ${{ needs.create_variant_matrix.outputs.conda_owner }} --label ${{ needs.create_variant_matrix.outputs.conda_label }} --token ${{ secrets.CONDA_API_TOKEN }}
         working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
