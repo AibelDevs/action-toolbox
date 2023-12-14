@@ -152,22 +152,20 @@ jobs:
 
       - name: Check if label "silence-bot" is added
         id: silence_bot
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         shell: python
         run: |
           import os
-          import base64
+          import json
           
-          def set_output(name, value, encode_it=False):
-            if encode_it:
-              value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
+          def set_output(name, value):
             with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                 print(f'{name}={value}', file=fh)
           
-          def deserialize_str(s):
-            return base64.b64decode(s).decode('utf-8')
           
           # Check if label "silence-bot" is added
-          labels = deserialize_str('${{ github.event.pull_request.labels }}')
+          labels = json.loads(os.environ['LABELS'])
           silence_bot = False
           for label in labels:
             if label['name'] == 'silence-bot':
@@ -175,7 +173,7 @@ jobs:
           
           set_output('silence_bot', silence_bot)
           
-          print(f'silence_bot={silence_bot}')
+          print(f'{silence_bot=}')
 
       - name: Delete previous bot comment
         uses: actions/github-script@v7
