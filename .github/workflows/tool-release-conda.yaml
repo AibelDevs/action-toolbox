@@ -276,6 +276,8 @@ jobs:
           import os
           import pathlib
           import toml
+          import json
+          import base64
 
           def set_output(name, value):
               with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
@@ -294,8 +296,11 @@ jobs:
 
           version_override = os.getenv('VERSION_OVERRIDE')
           if 'next' in version_override:
+              print(f"version_override: {version_override} (before)")
               # replace next. with next to comply with PEP440
               version_override = version_override.replace('-next.', pre_release_tag)
+              print(f"pre_release_tag: {pre_release_tag}")
+              print(f"version_override: {version_override}")
 
           pyproject_toml['project']['version'] = version_override
 
