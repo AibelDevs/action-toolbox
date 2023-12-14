@@ -118,6 +118,7 @@ jobs:
               'release-patch': '00ff00', // Green
               'release-minor': '0000ff', // Blue
               'release-major': 'ff0000', // Red
+              'silence-bot': '000000' // Black
             };
         
             const owner = context.repo.owner;
