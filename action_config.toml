@@ -40,14 +40,20 @@ image_path = '["spec"]["template"]["spec"]["containers"][0]["image"]'
 
 [tool.python]
 enabled = false
+pre_release_tag = "dev"
+# Will change semver pre-release tags to a non-descript "dev" release tag comply with PEP440
+# See https://packaging.python.org/en/latest/specifications/version-specifiers/#public-version-identifiers
+# for more information
+
 [tool.python.pip]
 enabled = false
-#pkg_name_override = "ada-py"
+#pkg_name_override = "your-pypi-package-name"
 # info
 #
 # If you are uploading your package to public pypi.org you need to set this
 # secrets.PYPI_API_TOKEN
-#
+
+# Custom PyPi server
 use_custom_pypi_server = true
 # Or if you use a custom pypi server you need to set these
 # secrets.CUSTOM_PYPI_URL
@@ -56,18 +62,28 @@ use_custom_pypi_server = true
 
 [tool.python.conda]
 enabled = false
-#pkg_name_override
+#pkg_name_override = "your-conda-package-name"
+
+# Related to Conda Build recipe
 recipe_dir = "./conda"
-owner = "Krandedev"
+extra_conda_dep_channels = ["krande"]
+
+# Anaconda Related
+use_anaconda_server = true
+owner = "MyCondaUser"
+label = "main" # set this if you want to upload to conda using a different label than main
+# info
+#
+# If you are uploading to public/private anaconda you need to set this secret
+# secrets.CONDA_API_TOKEN
+
+# Quetz related
 use_custom_quetz_server = true
 quetz_channel = "test"
 #
 # info
 #
-# If you are uploading to public/private anaconda you need to set this
-# secrets.CONDA_API_TOKEN
-#
-# Or if you will use a private QUETZ server you need to set these
+# Or if you will use a private QUETZ server you need to set these secrets
 # secrets.QUETZ_API_KEY
 # secrets.QUETZ_URL
 

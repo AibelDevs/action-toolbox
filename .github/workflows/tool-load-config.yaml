@@ -43,6 +43,9 @@ on:
       custom_quetz_server:
         description: 'Use a custom quetz server'
         value: ${{ jobs.config.outputs.custom_quetz_server }}
+      anaconda_server:
+        description: 'Use anaconda server'
+        value: ${{ jobs.config.outputs.anaconda_server }}
       docker_matrix:
         description: 'docker matrix'
         value: ${{ jobs.config.outputs.docker_matrix }}
@@ -64,6 +67,7 @@ jobs:
       toml_data: ${{ steps.config.outputs.toml_data }}
       custom_pypi_server: ${{ steps.config.outputs.custom_pypi_server }}
       custom_quetz_server: ${{ steps.config.outputs.custom_quetz_server }}
+      anaconda_server: ${{ steps.config.outputs.anaconda_server }}
       docker_matrix: ${{ steps.config.outputs.docker_matrix }}
       gitops_matrix: ${{ steps.config.outputs.gitops_matrix }}
     steps:
@@ -93,7 +97,7 @@ jobs:
           import base64
           import toml
           import json
-      
+          
           def set_output(name, value, encode_it=False):
               if isinstance(value, bool):
                   value = str(value).lower()
@@ -101,7 +105,7 @@ jobs:
                   value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
               with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                   print(f'{name}={value}', file=fh)
-      
+          
           data = toml.load(os.getenv("CONFIG_TOML_FILE"))
           set_output("toml_data", json.dumps(data), True)
           
@@ -117,7 +121,7 @@ jobs:
           
           # I cannot pass a list to the github actions matrix, so I have to convert the list to a dict
           set_output("docker_matrix", json.dumps({'docker': docker_config_list}))
-      
+          
           
           # GitOps
           gitops_config_list = data["tool"].get("gitops", [])
@@ -146,7 +150,7 @@ jobs:
             if pip_enabled:
               custom_pypi_server = pip_tool.get("use_custom_pypi_server", False)
               set_output("custom_pypi_server", custom_pypi_server)
-            
+          
             conda_tool = py_tool.get("conda", dict(enabled=False))
             conda_enabled = conda_tool.get("enabled", False)
             set_output("conda_enabled", conda_enabled)
@@ -154,5 +158,8 @@ jobs:
             if conda_enabled:
               custom_quetz_server = conda_tool.get("use_custom_quetz_server", False)
               set_output("custom_quetz_server", custom_quetz_server)
-            
+          
+              anaconda_server = conda_tool.get("use_anaconda_server", False)
+              set_output("anaconda_server", anaconda_server)
+          
           print(data)
