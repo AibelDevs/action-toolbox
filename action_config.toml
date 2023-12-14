@@ -71,7 +71,10 @@ extra_conda_dep_channels = ["krande"]
 # Anaconda Related
 use_anaconda_server = true
 owner = "MyCondaUser"
-label = "main" # set this if you want to upload to conda using a different label than main
+label = "main"
+# set label if you want to upload to conda using a different label than main
+# Remember then to install using "-c <owner>/label/<channel>"
+
 # info
 #
 # If you are uploading to public/private anaconda you need to set this secret
