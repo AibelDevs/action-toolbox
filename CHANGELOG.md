@@ -2,6 +2,13 @@
 
 
 
+## v1.2.1 (2023-12-14)
+
+### Fix
+
+* fix: add missing json module and have the option of testing silence-bot label (#13) ([`4c67fc0`](https://github.com/AibelDevs/action-toolbox/commit/4c67fc0c6031fe6acf054a02267e5922ac9f8d92))
+
+
 ## v1.2.0 (2023-12-14)
 
 ### Feature
