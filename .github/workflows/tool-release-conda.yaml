@@ -349,7 +349,7 @@ jobs:
           EOF
 
       - name: upload for Anaconda
-        if: ${{ inputs.use_quetz_server == 'false' && inputs.push_conda == 'true' }}
+        if: ${{ inputs.use_anaconda_server == 'true' && inputs.push_conda == 'true' }}
         env:
           ANACONDA_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
         run: |

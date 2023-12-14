@@ -43,6 +43,9 @@ on:
       custom_quetz_server:
         description: 'Use a custom quetz server'
         value: ${{ jobs.config.outputs.custom_quetz_server }}
+      anaconda_server:
+        description: 'Use anaconda server'
+        value: ${{ jobs.config.outputs.anaconda_server }}
       docker_matrix:
         description: 'docker matrix'
         value: ${{ jobs.config.outputs.docker_matrix }}
