@@ -280,8 +280,14 @@ jobs:
           def set_output(name, value):
               with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                   print(f'{name}={value}', file=fh)
-
+          
+          def deserialize_str(s):
+            return base64.b64decode(s).decode('utf-8')
+          
           pyproject_toml_file = list(pathlib.Path('').rglob('pyproject.toml'))[0]
+          config_toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
+          
+          pre_release_tag = config_toml_data['tool']['python'].get('pre_release_tag', 'dev')
 
           with open(pyproject_toml_file) as fh:
               pyproject_toml = toml.load(fh)
@@ -289,7 +295,7 @@ jobs:
           version_override = os.getenv('VERSION_OVERRIDE')
           if 'next' in version_override:
               # replace next. with next to comply with PEP440
-              version_override = version_override.replace('-next.', 'dev')
+              version_override = version_override.replace('-next.', pre_release_tag)
 
           pyproject_toml['project']['version'] = version_override
 

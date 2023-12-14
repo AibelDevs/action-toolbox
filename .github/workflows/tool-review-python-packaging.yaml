@@ -70,15 +70,16 @@ jobs:
 
           action_data = toml.load("${{ inputs.config_toml_file }}")
           pyproject_data = toml.load("pyproject.toml")
+          
+          pre_release_tag = action_data["tool"]["python"].get("pre_release_tag", "dev")
 
           def set_output(name, value):
             with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                 print(f'{name}={value}', file=fh)
           
           def make_semver_compatible(version: str) -> str:
-            release_tag = os.environ.get("RELEASE_TAG", "alpha")
-            if release_tag in version and "-" not in version:
-                version = version.replace(release_tag, f"-{release_tag}")
+            if pre_release_tag in version and "-" not in version:
+                version = version.replace(pre_release_tag, f"-{pre_release_tag}")
         
             elif "a" in version and "-" not in version:
                 version = version.replace("a", "-alpha.")
@@ -89,8 +90,11 @@ jobs:
             latest_version = make_semver_compatible(versions[0])
             for ver in versions[1:]:
                 semver_compatible = make_semver_compatible(ver)
-                if semver.compare(semver_compatible, latest_version) == 1:
-                    latest_version = semver_compatible
+                try:
+                  if semver.compare(semver_compatible, latest_version) == 1:
+                      latest_version = semver_compatible
+                except ValueError:
+                  pass
         
             return latest_version
           
