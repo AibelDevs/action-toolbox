@@ -168,7 +168,7 @@ jobs:
           labels = json.loads(os.environ['LABELS'])
           silence_bot = False
           for label in labels:
-            if label['name'] == 'silence-bot':
+            if label == 'silence-bot':
               silence_bot = True
           
           set_output('silence_bot', silence_bot)
