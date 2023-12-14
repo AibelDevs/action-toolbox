@@ -248,9 +248,6 @@ jobs:
           condarc: |
             remote_max_retries: 5
             remote_backoff_factor: 5
-            conda-build:
-              pkg_format: 2
-              zstd_compression_level: 19
             channel_priority: strict
             channels:
               - conda-forge
