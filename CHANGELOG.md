@@ -2,6 +2,13 @@
 
 
 
+## v1.2.0 (2023-12-14)
+
+### Feature
+
+* feat: add option for adding extra conda channel (#12) ([`0c6ea6e`](https://github.com/AibelDevs/action-toolbox/commit/0c6ea6e60b7c39e46d8f49606662c40948b95de8))
+
+
 ## v1.1.1 (2023-12-13)
 
 ### Fix
