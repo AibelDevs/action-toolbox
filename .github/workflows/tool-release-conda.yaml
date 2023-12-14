@@ -214,6 +214,7 @@ jobs:
           EOF
   
 
+
   conda_build_and_upload:
     name: Build "${{ matrix.builds.header_name }}"
     needs: [ create_variant_matrix, extract_conda_meta ]
@@ -234,10 +235,8 @@ jobs:
           pwd
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             echo "ARTIFACTS_DIR=D:/a/artifacts" >> $GITHUB_ENV
-            echo "CROOT_DIR=D:/a/build" >> $GITHUB_ENV
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             echo "ARTIFACTS_DIR=/Users/runner/work/artifacts" >> $GITHUB_ENV
-            echo "CROOT_DIR=/Users/runner/work/build" >> $GITHUB_ENV
           elif [[ "$RUNNER_OS" == "Linux" ]]; then
             echo "using default paths"
           fi      
@@ -250,7 +249,6 @@ jobs:
             remote_max_retries: 5
             remote_backoff_factor: 5
             conda-build:
-              output_folder: ${{ env.ARTIFACTS_DIR }}
               pkg_format: 2
               zstd_compression_level: 19
             channel_priority: strict
@@ -311,13 +309,13 @@ jobs:
           EOF
 
       - name: Build
-        if: ${{ inputs.use_quetz_server == 'true' && inputs.push_conda == 'true' }}
+        if: ${{ inputs.use_quetz_server == 'true' }}
         run: |
-          conda mambabuild . ${{ env.BUILD_ARGS }}
+          conda mambabuild . ${{ env.BUILD_ARGS }}  --output-folder ${{ env.ARTIFACTS_DIR }}
         working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
 
       - name: Build
-        if: ${{ inputs.use_quetz_server == 'false' && inputs.push_conda == 'true' }}
+        if: ${{ inputs.use_quetz_server == 'false' }}
         run: |
           conda mambabuild . ${{ env.BUILD_ARGS }} --user ${{ needs.create_variant_matrix.outputs.conda_owner }} --label ${{ needs.create_variant_matrix.outputs.conda_label }} --token ${{ secrets.CONDA_API_TOKEN }}
         working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
