@@ -337,6 +337,7 @@ jobs:
           client = QuetzClient.from_token(os.getenv('QUETZ_URL'), os.getenv('QUETZ_API_KEY'))
           
           for conda_file in pathlib.Path(os.getenv('ARTIFACTS_DIR')).rglob('*.conda'):
+            print(f"Uploading {conda_file} to channel {quetz_channel}")
             try:
               client.post_file_to_channel(quetz_channel, conda_file, False)
             except requests.exceptions.HTTPError as e:
