@@ -250,7 +250,6 @@ jobs:
             remote_max_retries: 5
             remote_backoff_factor: 5
             conda-build:
-              root-dir: ${{ env.CROOT_DIR }}
               output_folder: ${{ env.ARTIFACTS_DIR }}
               pkg_format: 2
               zstd_compression_level: 19
@@ -320,7 +319,8 @@ jobs:
       - name: Build
         if: ${{ inputs.use_quetz_server == 'false' && inputs.push_conda == 'true' }}
         run: |
-          conda mambabuild ${{ needs.extract_conda_meta.outputs.recipe_dir }} ${{ env.BUILD_ARGS }} --user ${{ needs.create_variant_matrix.outputs.conda_owner }} --label ${{ needs.create_variant_matrix.outputs.conda_label }} --token ${{ secrets.CONDA_API_TOKEN }}
+          conda mambabuild . ${{ env.BUILD_ARGS }} --user ${{ needs.create_variant_matrix.outputs.conda_owner }} --label ${{ needs.create_variant_matrix.outputs.conda_label }} --token ${{ secrets.CONDA_API_TOKEN }}
+        working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
 
       - name: Upload packages to Quetz Server
         if: ${{ inputs.use_quetz_server == 'true' && inputs.push_conda == 'true' }}
