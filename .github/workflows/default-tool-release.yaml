@@ -79,6 +79,7 @@ jobs:
     uses: ./.github/workflows/tool-release-conda.yaml
     with:
       use_quetz_server: ${{ needs.load-config.outputs.custom_quetz_server }}
+      use_anaconda_server: ${{ needs.load-config.outputs.anaconda_server }}
       push_conda: 'true'
       config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
     secrets:

@@ -27,6 +27,11 @@ on:
         type: string
         required: false
         default: "false"
+      use_anaconda_server:
+        description: 'Use anaconda server'
+        type: string
+        required: false
+        default: "false"
       push_conda:
         description: 'Push to conda'
         type: string
@@ -309,8 +314,7 @@ jobs:
             print(f"BUILD_ARGS={build_args}", file=fh)
           EOF
 
-      - name: Build for quetz server
-        if: ${{ inputs.use_quetz_server == 'true' }}
+      - name: Build conda package
         run: |
           conda mambabuild . ${{ env.BUILD_ARGS }}
         working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
@@ -345,6 +349,7 @@ jobs:
           EOF
 
       - name: upload for Anaconda
+        if: ${{ inputs.use_quetz_server == 'false' && inputs.push_conda == 'true' }}
         env:
           ANACONDA_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
         run: |

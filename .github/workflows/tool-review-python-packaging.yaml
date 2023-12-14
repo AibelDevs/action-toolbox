@@ -133,28 +133,30 @@ jobs:
           if conda_tool["enabled"]:
             package_name = conda_tool.get("name_override", pyproject_name)
             uses_quetz_server = conda_tool.get("use_custom_quetz_server", False)
+            uses_anaconda_server = conda_tool.get("use_anaconda_server", False)
+            
+            
+            latest_quetz_version = "N/A"
+            latest_conda_version = "N/A"
             if uses_quetz_server:
               quetz_url = os.getenv("QUETZ_URL")
               set_output("uses_custom_quetz_server", 'true')
               # Add support for reading latest version from custom quetz server later
-              latest_conda_version = "N/A"
-            else:
+            
+            if uses_anaconda_server:
               owner = conda_tool['owner']
               conda_url = f"https://api.anaconda.org/package/{owner}/{package_name}"
               response = requests.get(conda_url)
               data = response.json()
+              set_output("uses_anaconda_server", 'true')
               if data.get("files", None) is not None:
                 versions = [file["version"] for file in data["files"]]
                 latest_conda_version = get_latest_version_from_list_of_versions_by_numeric_sorting(versions)
-              else:
-                latest_conda_version = "N/A"
             
             set_output("conda_pkg_name", package_name)
             set_output("conda_version", latest_conda_version)
-            set_output("uses_conda_packaging", 'true')
-          else:
-            set_output("uses_conda_packaging", 'false')
-          
+            set_output("quetz_version", latest_conda_version)
+
       - name: Check presence of API keys
         id: check_api_keys
         run: |
@@ -229,41 +231,41 @@ jobs:
           pyproject_name_str = '${{ steps.check_python_packaging.outputs.pyproject_name }}'
 
           # Convert the string values to booleans
-          uses_conda_packaging = '${{ steps.check_python_packaging.outputs.uses_conda_packaging }}' == 'true'
           uses_pip_packaging = '${{ steps.check_python_packaging.outputs.uses_pip_packaging }}' == 'true'
           uses_custom_pypi_server = '${{ steps.check_python_packaging.outputs.uses_custom_pypi_server }}' == 'true'
           uses_quetz_server = '${{ steps.check_python_packaging.outputs.uses_custom_quetz_server }}' == 'true'
+          uses_anaconda_server = '${{ steps.check_python_packaging.outputs.uses_anaconda_server }}' == 'true'
+          
+          
           
           # check if all_checks are true
           all_checks = []
           header = "\n\nPython Packaging results:\n\n"
           
           secrets_review_str = ""
-          
-          if uses_conda_packaging:
-            # check if secret is set
-            
-            if uses_quetz_server:
-              has_quetz_api_key = '${{ steps.check_api_keys.outputs.has_quetz_api_key }}' == 'true'
-              has_quetz_url = '${{ steps.check_api_keys.outputs.has_quetz_url }}' == 'true'
-              if has_quetz_api_key is False:
-                secrets_review_str += "\n* ❌ I did not find the QUETZ_API_KEY secret."
-              else:
-                secrets_review_str += "\n* ✅ I found the QUETZ_API_KEY secret."
-          
-              if has_quetz_url is False:
-                secrets_review_str += "\n* ❌ I did not find the QUETZ_URL secret."
-              else:
-                secrets_review_str += "\n* ✅ I found the QUETZ_URL secret."
-          
-              all_checks.extend([has_quetz_api_key, has_quetz_url])
+        
+          if uses_quetz_server:
+            has_quetz_api_key = '${{ steps.check_api_keys.outputs.has_quetz_api_key }}' == 'true'
+            has_quetz_url = '${{ steps.check_api_keys.outputs.has_quetz_url }}' == 'true'
+            if has_quetz_api_key is False:
+              secrets_review_str += "\n* ❌ I did not find the QUETZ_API_KEY secret."
             else:
-              has_conda_api_token = '${{ steps.check_api_keys.outputs.has_conda_api_key }}' == 'true'
-              if has_conda_api_token is False:
-                  secrets_review_str += "\n* ❌ I did not find the CONDA_API_TOKEN secret."
-              else:
-                  secrets_review_str += "\n* ✅ I found the CONDA_API_TOKEN secret."
-              all_checks.append(has_conda_api_token)
+              secrets_review_str += "\n* ✅ I found the QUETZ_API_KEY secret."
+        
+            if has_quetz_url is False:
+              secrets_review_str += "\n* ❌ I did not find the QUETZ_URL secret."
+            else:
+              secrets_review_str += "\n* ✅ I found the QUETZ_URL secret."
+        
+            all_checks.extend([has_quetz_api_key, has_quetz_url])
+          
+          if uses_anaconda_server:
+            has_conda_api_token = '${{ steps.check_api_keys.outputs.has_conda_api_key }}' == 'true'
+            if has_conda_api_token is False:
+                secrets_review_str += "\n* ❌ I did not find the CONDA_API_TOKEN secret."
+            else:
+                secrets_review_str += "\n* ✅ I found the CONDA_API_TOKEN secret."
+            all_checks.append(has_conda_api_token)
 
           if uses_pip_packaging:
             # check if secret is set
@@ -271,6 +273,7 @@ jobs:
             has_custom_pypi_username = '${{ steps.check_api_keys.outputs.has_custom_pypi_username }}' == 'true'
             has_custom_pypi_password = '${{ steps.check_api_keys.outputs.has_custom_pypi_password }}' == 'true'
             has_custom_pypi_url = '${{ steps.check_api_keys.outputs.has_custom_pypi_url }}' == 'true'
+            
             if uses_custom_pypi_server:
               if has_custom_pypi_username is False:
                 secrets_review_str += "\n* ❌ I did not find the CUSTOM_PYPI_USERNAME secret."
@@ -294,22 +297,20 @@ jobs:
               else:
                 secrets_review_str += "\n* ✅ I found the PYPI_API_TOKEN secret."
               all_checks.append(has_pypi_api_token)
-              
-
+          
           # Python package versions
           version_review_str = "\n\n"
-          if uses_conda_packaging is True or uses_pip_packaging is True:
+          if uses_quetz_server is True or uses_anaconda_server is True or uses_pip_packaging is True:
             
             version_review_str += "| Packaging Type | Package Name | Version | \n"
             version_review_str += "|----------------|--------------|---------| \n"
 
             version_review_str += f"| pyproject.toml | {pyproject_name_str} | {pyproject_version_str} |\n"
 
-          if uses_conda_packaging:
-            if uses_quetz_server:
-              version_review_str += f"| Quetz | {conda_pkg_name_str} | {conda_version_str} | \n"
-            else:
-              version_review_str += f"| Conda | {conda_pkg_name_str} | {conda_version_str} | \n"
+          if uses_quetz_server:
+            version_review_str += f"| Quetz | {conda_pkg_name_str} | {conda_version_str} | \n"
+          if uses_anaconda_server:
+            version_review_str += f"| Conda | {conda_pkg_name_str} | {conda_version_str} | \n"
 
           if uses_pip_packaging:
             if uses_custom_pypi_server is False:
