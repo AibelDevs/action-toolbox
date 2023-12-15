@@ -107,7 +107,7 @@ jobs:
           tag_release = latest_semver_tag[1:]
           
           # Bump version according to input.pre_release_level
-          ver = semver.VersionInfo.parse(current_version)
+          ver = semver.VersionInfo.parse(tag_release)
           if input.pre_release_level == "patch":
             ver = ver.bump_patch()
           elif input.pre_release_level == "minor":
