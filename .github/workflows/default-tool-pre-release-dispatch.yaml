@@ -69,31 +69,40 @@ jobs:
         with:
           fetch-depth: 0  # Fetches all history for all branches and tags
 
+
       - name: Create "next" version
         id: get_current_version
         shell: python
         run: |
           import os
-          
+          import re
+
           def set_output(name, value):
             with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                 print(f'{name}={value}', file=fh)
-          
-          # get the latest tagged release          
-          tag_release = os.popen('git describe --tags --abbrev=0').read().strip()
-          print(f"{tag_release=}")
-          
-          # strip v from the tag
-          if tag_release.startswith('v'):
-              tag_release = tag_release[1:]
-          
+
+          # get all tags and filter for semver format with prefix 'v'
+          all_tags = os.popen('git tag').read().splitlines()
+          semver_tags = [tag for tag in all_tags if re.match(r'^v\d+\.\d+\.\d+$', tag)]
+          if semver_tags:
+              # get the latest semver tag
+              semver_tags.sort(key=lambda s: list(map(int, s[1:].split('.'))), reverse=True)
+              latest_semver_tag = semver_tags[0]
+          else:
+              latest_semver_tag = 'v0.0.0'  # default if no semver tags found
+
+          print(f"{latest_semver_tag=}")
+
+          # strip 'v' from the tag
+          tag_release = latest_semver_tag[1:]
+
           # add a pre-release "version-next.build_id" to the latest tagged release
           build_id = os.getenv('GITHUB_RUN_NUMBER')
           print(f"{build_id=}")
-          
+
           # concatenate the version and build_id
           current_version = f"{tag_release}-next.{build_id}"
-          
+
           print(current_version)
           set_output('current_version', current_version)
 
