@@ -114,6 +114,8 @@ jobs:
             ver = ver.bump_minor()
           elif input.pre_release_level == "major":
             ver = ver.bump_major()
+          elif input.pre_release_level == "rebuild":
+            pass
           else:
             print(f"Unknown pre_release_level: {input.pre_release_level}")
             exit(1)
