@@ -71,7 +71,7 @@ jobs:
       docker_matrix: ${{ steps.config.outputs.docker_matrix }}
       gitops_matrix: ${{ steps.config.outputs.gitops_matrix }}
     steps:
-      - name: Checkout PR
+      - name: Checkout PR or branch push origin
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
