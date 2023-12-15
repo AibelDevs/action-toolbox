@@ -128,8 +128,11 @@ jobs:
           build_id = os.getenv('GITHUB_RUN_NUMBER')
           print(f"{build_id=}")
 
-          # concatenate the version and build_id
-          current_version = f"{tag_release}-next.{build_id}"
+          # concatenate the version and build_id (if pre-release)
+
+          current_version = tag_release
+          if input_release_level != "rebuild":
+            current_version += f"-next.{build_id}"
 
           print(current_version)
           set_output('current_version', current_version)
