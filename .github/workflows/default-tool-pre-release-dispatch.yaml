@@ -23,6 +23,11 @@ on:
         required: false
         type: string
         default: false
+      pre_release_level:
+        description: 'Pre-release level'
+        required: false
+        type: string
+        default: "patch"
     secrets:
       SOURCE_KEY:
         required: false
@@ -69,6 +74,10 @@ jobs:
         with:
           fetch-depth: 0  # Fetches all history for all branches and tags
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install semver==3.0.2
 
       - name: Create "next" version
         id: get_current_version
@@ -76,6 +85,7 @@ jobs:
         run: |
           import os
           import re
+          import semver
 
           def set_output(name, value):
             with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
@@ -95,7 +105,21 @@ jobs:
 
           # strip 'v' from the tag
           tag_release = latest_semver_tag[1:]
-
+          
+          # Bump version according to input.pre_release_level
+          ver = semver.VersionInfo.parse(current_version)
+          if input.pre_release_level == "patch":
+            ver = ver.bump_patch()
+          elif input.pre_release_level == "minor":
+            ver = ver.bump_minor()
+          elif input.pre_release_level == "major":
+            ver = ver.bump_major()
+          else:
+            print(f"Unknown pre_release_level: {input.pre_release_level}")
+            exit(1)
+          
+          tag_release = str(ver)
+          
           # add a pre-release "version-next.build_id" to the latest tagged release
           build_id = os.getenv('GITHUB_RUN_NUMBER')
           print(f"{build_id=}")
