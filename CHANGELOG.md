@@ -2,6 +2,13 @@
 
 
 
+## v1.2.3 (2023-12-15)
+
+### Fix
+
+* fix: do not test conda package during publish task (#15) ([`735fb31`](https://github.com/AibelDevs/action-toolbox/commit/735fb31a16231d22babd653e35fc8eb946c4341b))
+
+
 ## v1.2.2 (2023-12-15)
 
 ### Fix
