@@ -103,6 +103,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
+
       - uses: mamba-org/setup-micromamba@v1 # https://github.com/mamba-org/setup-micromamba
         with:
           environment-name: build-env
@@ -206,6 +207,9 @@ jobs:
           extra_build_str = ""
           for channel in extra_conda_channels:
             extra_build_str += f" -c {channel}"
+          
+          if "${{ inputs.push_conda }}" == "true":
+              extra_build_str += " --no-test"
           
           recipe_dir = "${{ needs.extract_conda_meta.outputs.recipe_dir }}"
           add_build_args = "${{ inputs.add_build_args }}"
