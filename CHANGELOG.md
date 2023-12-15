@@ -2,6 +2,13 @@
 
 
 
+## v1.2.2 (2023-12-15)
+
+### Fix
+
+* fix: add fix for pre-release number calculation on repositories with other… (#14) ([`525936a`](https://github.com/AibelDevs/action-toolbox/commit/525936a6a9bfdead89ffca9c33992720048a604e))
+
+
 ## v1.2.1 (2023-12-14)
 
 ### Fix
