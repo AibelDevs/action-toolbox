@@ -209,7 +209,7 @@ jobs:
             extra_build_str += f" -c {channel}"
           
           if "${{ inputs.push_conda }}" == "true":
-              extra_build_str += " --no-test"
+            extra_build_str += " --no-copy-test-source-files --no-test --no-build-id"
           
           recipe_dir = "${{ needs.extract_conda_meta.outputs.recipe_dir }}"
           add_build_args = "${{ inputs.add_build_args }}"
