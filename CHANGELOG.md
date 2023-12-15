@@ -2,6 +2,13 @@
 
 
 
+## v1.3.0 (2023-12-15)
+
+### Feature
+
+* feat: allow passing in the desired pre-release level for dispatch workflows (#16) ([`ed9e3d1`](https://github.com/AibelDevs/action-toolbox/commit/ed9e3d178aff091b41e35682ee94ede1a47fe855))
+
+
 ## v1.2.3 (2023-12-15)
 
 ### Fix
