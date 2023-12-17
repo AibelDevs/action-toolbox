@@ -114,6 +114,7 @@ jobs:
           forced_release = ""
 
           def check_label(label_name):
+              global release_label, forced_release
               if label_name in release_label_map:
                   release_label = label_name
                   forced_release = release_label_map[label_name]
