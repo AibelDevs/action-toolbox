@@ -111,6 +111,7 @@ jobs:
           }
 
           release_label = "release-skip"
+          forced_release = ""
 
           def check_label(label_name):
               if label_name in release_label_map:
@@ -125,6 +126,7 @@ jobs:
               release_labels_found += check_label(label)
 
           # temp debug..
+          print(rel_labels)
           print(release_labels_found)
           print(release_label)
           print(forced_release)
