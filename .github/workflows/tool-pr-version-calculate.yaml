@@ -130,7 +130,7 @@ jobs:
           print(release_labels_found)
           print(release_label)
           print(forced_release)
-          print(${{ env.LATEST_RELEASE_TAG }})
+          print("${{ env.LATEST_RELEASE_TAG }}")
 
           if release_labels_found != 1:
             # exit, if multible is set, then something is wrong and we really do not want to do any release
@@ -160,7 +160,7 @@ jobs:
           print(f'Captured Version Name: "{output}"')
 
           # Compare current tag with new so we know if its new
-          if "v" + str(output) != ${{ env.LATEST_RELEASE_TAG }}:
+          if "v" + str(output) != "${{ env.LATEST_RELEASE_TAG }}":
             set_output('version', str(output))
             set_output('release_override_found', forced_release)
             set_output('is_release', "true")
