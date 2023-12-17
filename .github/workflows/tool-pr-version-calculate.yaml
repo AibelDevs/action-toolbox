@@ -42,7 +42,7 @@ jobs:
     name: Calculate semantic release version
     runs-on: ubuntu-latest
     outputs:
-      calculated_version: ${{ steps.calculate_version.outputs.version }}
+      calculated_version: ${{ steps.calculate_version.outputs.new_version }}
       release_override_found: ${{ steps.calculate_version.outputs.release_override_found }}
       is_release: ${{ steps.calculate_version.outputs.is_release }}
     steps:
@@ -164,9 +164,11 @@ jobs:
           cur_version = "${{ env.LATEST_RELEASE_TAG }}"
           new_version = f"v{output}"
 
+          # debug print
+          print(cur_version)
+          print(new_version)
+
           if cur_version != new_version:
-            print(cur_version)
-            print(new_version)
-            set_output('version', str(output))
+            set_output('new_version', str(output))
             set_output('release_override_found', forced_release)
             set_output('is_release', "true")
