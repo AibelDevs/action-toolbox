@@ -76,7 +76,7 @@ jobs:
       GITOPS_KEY: ${{ secrets.GITOPS_KEY }}
 
   pr-review-summary:
-    name: Python Check Pull Request
+    name: Generate Pull Request Summary
     needs: [ load-config, pr-review, python-review, docker-review, gitops-review ]
     if: always()
     runs-on: ubuntu-latest
