@@ -110,21 +110,19 @@ jobs:
               "release-major": "--major"
           }
 
+          def check_label(label_name, cur_count, cur_label, cur_force_release):
+              if label_name in release_label_map:
+                  return (cur_count + 1, label_name, release_label_map[label_name])
+              return (cur_count, cur_label, cur_force_release)
+
+          # defaults
+          release_labels_found = 0
           release_label = "release-skip"
           forced_release = ""
 
-          def check_label(label_name):
-              global release_label, forced_release
-              if label_name in release_label_map:
-                  release_label = label_name
-                  forced_release = release_label_map[label_name]
-                  return 1
-              return 0
-
-
-          release_labels_found = 0
           for label in rel_labels:
-              release_labels_found += check_label(label)
+              (release_labels_found, release_label, forced_release) = check_label(
+                  label, release_labels_found, release_label, forced_release)
 
           # temp debug..
           print(rel_labels)
