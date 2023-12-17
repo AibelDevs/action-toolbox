@@ -128,11 +128,11 @@ jobs:
             # exit, if multible is set, then something is wrong and we really do not want to do any release
             return
 
-          if release_label == "release-skip"
+          if release_label == "release-skip":
             # exit if skip release
             return
           
-          if forced_release != ""
+          if forced_release != "":
             command.append(forced_release)
 
 
