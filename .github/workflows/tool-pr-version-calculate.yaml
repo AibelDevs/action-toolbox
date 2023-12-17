@@ -160,6 +160,10 @@ jobs:
           print(f'Captured Version Name: "{output}"')
 
           # Compare current tag with new so we know if its new
+          print("${{ env.LATEST_RELEASE_TAG }}")
+          print("v" + str(output)+"X")
+
+
           if "v" + str(output) != "${{ env.LATEST_RELEASE_TAG }}":
             set_output('version', str(output))
             set_output('release_override_found', forced_release)
