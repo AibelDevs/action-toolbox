@@ -124,13 +124,15 @@ jobs:
           for label in rel_labels:
               release_labels_found += check_label(label["name"])
 
+
+
           if release_labels_found != 1:
             # exit, if multible is set, then something is wrong and we really do not want to do any release
-            return
+            exit()
 
           if release_label == "release-skip":
             # exit if skip release
-            return
+            exit()
           
           if forced_release != "":
             command.append(forced_release)
