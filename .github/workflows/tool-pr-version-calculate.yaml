@@ -124,7 +124,10 @@ jobs:
           for label in rel_labels:
               release_labels_found += check_label(label)
 
-
+          # temp debug..
+          print(release_labels_found)
+          print(release_label)
+          print(forced_release)
 
           if release_labels_found != 1:
             # exit, if multible is set, then something is wrong and we really do not want to do any release
