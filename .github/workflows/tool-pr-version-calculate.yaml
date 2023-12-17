@@ -23,9 +23,12 @@ on:
       calculated_version:
         description: "Calculated version"
         value: ${{ jobs.version_calc.outputs.calculated_version }}
-      calculated_bump_level:
-        description: "Calculated bump level"
-        value: ${{ jobs.version_calc.outputs.calculated_bump_level }}
+      release_override_found:
+        description: "Release override found"
+        value: ${{ jobs.version_calc.outputs.release_override_found }}
+      is_release:
+        description: "Is set to 'true' if its a release"
+        value: ${{ jobs.version_calc.outputs.is_release }}
     secrets:
       SOURCE_KEY:
         required: false
@@ -40,13 +43,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       calculated_version: ${{ steps.calculate_version.outputs.version }}
-      calculated_bump_level: ${{ steps.calculate_version.outputs.calculated_bump_level }}
+      release_override_found: ${{ steps.calculate_version.outputs.release_override_found }}
+      is_release: ${{ steps.calculate_version.outputs.is_release }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
           fetch-depth: 0
+
+      - name: Add current title as commit for semantic release calculation
+        run: 
+          git commit --allow-empty -m "${{ github.event.pull_request.title }}"
 
       - name: Set up Python ${{ inputs.python_version }}
         uses: actions/setup-python@v3
@@ -62,7 +70,6 @@ jobs:
         shell: python
         id: calculate_version
         env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         run: |
           import subprocess
@@ -88,36 +95,48 @@ jobs:
           # Command to execute
           command = ["semantic-release", "--config", "${{ inputs.config_toml_file }}", "--noop", "version"]
           
-          # Check if we need to force a release
-          pr_title = os.getenv('PR_TITLE')
-          valid_pr_title = ['fix: ', 'fix!: ', 'feat: ', 'feat!: ', 'chore: ']
+
+          # verify labels and only run version calculation if its a release
+          # if skip we do not return any version/set is_release to true
+          # if more then one label we do not return any version//set is_release to true
           
-          title_pr_release_map = {
-            'fix: ': 'patch',
-            'fix!: ': 'major',
-            'feat: ': 'minor',
-            'feat!: ': 'major',
-            'chore: ': 'skip'
+          release_label_map = {
+              "release-skip": "",
+              "release-auto": "",
+              "release-patch": "--patch",
+              "release-minor": "--minor",
+              "release-major": "--major"
           }
-          forced_release = ''
-          if len(rel_labels) > 0:
-            if len(rel_labels) != 1:
-              print(f"WARNING! More than one release label found. Will use the first one. {rel_labels}", )
-            rel_label = rel_labels[0]
-            print("Release label found:", rel_labels[0])
-            if rel_label != "release-skip":
-              if rel_label == "release-auto":
-                # Use the pr_title_map to determine the release type
-                for key in title_pr_release_map.keys():
-                  if pr_title.startswith(key):
-                    forced_release = "--" + title_pr_release_map[key]
-                    command.append(forced_release)
-                    break
-              else:
-                forced_release = "--" + rel_label.split("-")[1]
-                command.append(forced_release)
+
+          release_label = "release-skip"
+
+          def check_label(label_name):
+              if label_name in release_label_map:
+                  release_label = label_name
+                  forced_release release_label_map[label_name]
+                  return 1
+              return 0
+
+
+          release_labels_found = 0
+          for label in rel_labels:
+              release_labels_found += check_label(label["name"])
+
+          if release_labels_found != 1:
+            # exit, if multible is set, then something is wrong and we really do not want to do any release
+            return
+
+          if release_label == "release-skip"
+            # exit if skip release
+            return
           
-          set_output('calculated_bump_level', forced_release)
+          if forced_release != ""
+            command.append(forced_release)
+
+
+          set_output('release_override_found', forced_release)
+          set_output('is_release', "true")
+
           print(command)          
           # Running the command and capturing output
           result = subprocess.run(command, capture_output=True, text=True)
@@ -134,3 +153,4 @@ jobs:
           
           # Set the output
           set_output('version', str(output))
+         
