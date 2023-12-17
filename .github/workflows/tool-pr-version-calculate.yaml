@@ -53,7 +53,9 @@ jobs:
           fetch-depth: 0
 
       - name: Add current title as commit for semantic release calculation
-        run: 
+        run: |
+          git config --global user.email "dummy@dummy.com"
+          git config --global user.name "dummy"
           git commit --allow-empty -m "${{ github.event.pull_request.title }}"
 
       - name: Set up Python ${{ inputs.python_version }}
