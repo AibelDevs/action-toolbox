@@ -58,7 +58,6 @@ jobs:
       matrix: ${{ fromJson( inputs.docker_matrix ) }}
     steps:
       - name: Check if matrix.docker.enabled is true
-        id: check_docker_enabled
         run: |
           if [[ "${{ matrix.docker.enabled }}" == "false" ]]; then
             echo "Docker is disabled for this tool"

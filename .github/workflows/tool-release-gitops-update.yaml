@@ -64,22 +64,29 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix: ${{ fromJson(inputs.gitops_matrix) }}
-#    permissions:
-#      id-token: write
-#      contents: write
 
     steps:
+      - name: Check if matrix.docker.enabled is true
+        run: |
+          if [[ "${{ matrix.gitops.enabled }}" == "false" ]]; then
+            echo "Gitops is disabled for this tool"
+            echo "GITOPS_DISABLED=true" >> $GITHUB_ENV
+          fi
+
       - name: Set up Python ${{ inputs.python_version }}
+        if: env.GITOPS_DISABLED != 'true'
         uses: actions/setup-python@v3
         with:
           python-version: ${{ inputs.python_version }}
 
       - name: Install python dependencies
+        if: env.GITOPS_DISABLED != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install ruamel.yaml==${{inputs.python_yaml_pkg}}
 
       - name: Checkout gitops
+        if: env.GITOPS_DISABLED != 'true'
         uses: actions/checkout@v4
         with:
           ref: main
@@ -89,6 +96,7 @@ jobs:
           path: gitops
 
       - name: Collect gitops config
+        if: env.GITOPS_DISABLED != 'true'
         env:
           DOCKER_MATRIX: ${{ inputs.docker_matrix }}
         working-directory: ./gitops
@@ -127,6 +135,7 @@ jobs:
               yaml.dump_all(yaml_blocks, f)
 
       - name: Gitops - commit yaml
+        if: env.GITOPS_DISABLED != 'true'
         working-directory: ./gitops
         run: |
           git config user.name github-actions
@@ -135,13 +144,13 @@ jobs:
           git commit --allow-empty -m "Test updated ${{ matrix.gitops.docker_ref }}:${{ inputs.release_tag_override }}"
 
       - name: Gitops - push yaml
-        if: inputs.push_commit == 'true'
+        if: inputs.push_commit == 'true' && env.GITOPS_DISABLED != 'true'
         working-directory: ./gitops
         run: |
           git push
 
       - name: Gitops - log
-        if: inputs.create_run_logs == 'true'
+        if: inputs.create_run_logs == 'true' && env.GITOPS_DISABLED != 'true'
         id: update_log
         run: |
           echo "congratuations, you updated ${{ matrix.gitops.docker_ref }}:${{ inputs.release_tag_override }}"
@@ -149,7 +158,7 @@ jobs:
           echo "${{ matrix.gitops.docker_ref }}" >> build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.docker_ref }}.txt
 
       - name: Upload Build Log
-        if: inputs.create_run_logs == 'true'
+        if: inputs.create_run_logs == 'true' && env.GITOPS_DISABLED != 'true'
         uses: actions/upload-artifact@v3
         continue-on-error: true # Needed to continue in the event the build fails and no build log is found
         with:
@@ -201,7 +210,7 @@ jobs:
           
           docker_enabled_ref_names = {x["ref_name"] for x in docker_matrix["docker"] if x["enabled"]}
           
-          docker_images = {x["docker_ref"] for x in gitops_matrix["gitops"]}
+          docker_images = {x["docker_ref"] for x in gitops_matrix["gitops"] if x["enabled"]
           
           print("Docker Images:", docker_images)
           
@@ -219,11 +228,12 @@ jobs:
           
           # Check if docker
           if docker_enabled_ref_names != docker_images:
-            run_review_str += "\n* ❌ Docker images were not built for all enabled docker refs"
-            
+            run_review_str += "\n* ❌ Number of enabled docker images does not match enabled gitops docker_refs."
+
             # find the gitops refs that were not built
             missing_docker_images = docker_images - docker_enabled_ref_names
-            run_review_str += "\n  * Docker image ref issues: " + ", ".join(missing_docker_images)
+            for missing_docker_image in missing_docker_images:
+              run_review_str += f"\n  * {missing_docker_image} was not built"
           
           else:
             run_review_str += "\n* ✅ Docker images were built for all enabled docker refs"
