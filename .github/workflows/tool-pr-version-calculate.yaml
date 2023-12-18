@@ -141,7 +141,7 @@ jobs:
       
           # temp debug..
           print(f"{rel_labels=}")
-          print(f"{release_labels_found=}")
+          print(f"{num_release_labels_found=}")
           print(f"{release_label=}")
           print(f"{forced_release=}")
           print("LATEST_RELEASE_TAG"+os.getenv("LATEST_RELEASE_TAG"))

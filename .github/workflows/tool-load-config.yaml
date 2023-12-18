@@ -1,4 +1,4 @@
-name: Load toml config
+name: Load toml config "${{ inputs.config_toml_file }}"
 
 on:
   workflow_call:
