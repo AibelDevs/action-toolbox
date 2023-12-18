@@ -114,9 +114,9 @@ jobs:
           next_version = "${{ needs.pr-version-calculate.outputs.calculated_version }}"
           
           if next_version == "":
-             next_version = "N/A (skipping release)"
-          
-          body += f'\n * ✅ Calculated next version: "{next_version}"'
+            body += f'\n * ✅ Skipping release'
+          else:
+            body += f'\n * ✅ Calculated next version: "{next_version}"'
           
           # Set the output
           set_output('body', body, True)
