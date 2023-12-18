@@ -3,9 +3,9 @@ name: Default Review Pull Request
 on:
   workflow_call:
     outputs:
-      REVIEW_OK:
+      review_ok:
         description: "Is the PR ok"
-        value: ${{ jobs.pr-review-summary.outputs.REVIEW_OK }}
+        value: ${{ jobs.pr-review-summary.outputs.review_ok }}
     secrets:
       SOURCE_KEY:
         required: true
@@ -85,7 +85,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     outputs:
-      REVIEW_OK: ${{ steps.comment_body.outputs.REVIEW_OK }}
+      review_ok: ${{ steps.comment_body.outputs.review_ok }}
     steps:
       - name: Set up Python
         uses: actions/setup-python@v3
@@ -144,10 +144,10 @@ jobs:
           # check if all_checks are true
           if all(all_checks):
             header = "👋 Hi there! I have checked your PR and found no issues. Thanks for your contribution!\n"
-            set_output('REVIEW_OK', 'true')
+            set_output('review_ok', 'true')
           else:
             header = "👋 Hi there! I have checked your PR and found the following:\n\n"
-            set_output('REVIEW_OK', 'false')
+            set_output('review_ok', 'false')
           
           body = header + review_str
           
@@ -224,5 +224,5 @@ jobs:
             })
 
       - name: Fail if linting failed
-        if: steps.comment_body.outputs.REVIEW_OK == 'false'
+        if: steps.comment_body.outputs.review_ok == 'false'
         run: exit 1
