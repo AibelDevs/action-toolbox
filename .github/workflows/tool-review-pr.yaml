@@ -112,6 +112,10 @@ jobs:
             body += "\n * ✅ SOURCE_KEY is set as a secret"
           
           next_version = "${{ needs.pr-version-calculate.outputs.calculated_version }}"
+          
+          if next_version == "":
+             next_version = "N/A (skipping release)"
+          
           body += f'\n * ✅ Calculated next version: "{next_version}"'
           
           # Set the output
