@@ -74,6 +74,7 @@ jobs:
                 print(f'{name}={value}', file=fh)
           
           # PR lint results
+          pr_calc_issue_str = '${{ needs.pr-version-calculate.outputs.issue_str }}'
           has_source_key = '${{ needs.pr-lint-checker.outputs.has_source_key_secret }}' == 'true'
           check_pr_title = '${{ needs.pr-lint-checker.outputs.check_pr_title }}' == 'true'
           check_release_label = '${{ needs.pr-lint-checker.outputs.check_release_label }}' == 'true'
@@ -82,12 +83,18 @@ jobs:
           
           body = "\n# PR Review:\n\n"
           
+          if pr_calc_issue_str != "":
+            all_checks.append(False)
+          
           if all(all_checks):
             body += "I found no pr-related issues.\n"
             set_output('PR_REVIEW_OK', 'true')
           else:
             body += "I found some pr-related issues:\n\n"
             set_output('PR_REVIEW_OK', 'false')
+          
+          if pr_calc_issue_str != "":
+            body += f"\n * ❌ {pr_calc_issue_str}"
           
           if check_pr_title is False:
             body += "\n * ❌ You need to start PR title with fix: feat: fix!: feat!: chore:"

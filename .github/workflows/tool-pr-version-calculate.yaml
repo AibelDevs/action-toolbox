@@ -29,6 +29,9 @@ on:
       is_release:
         description: "Is set to 'true' if its a release"
         value: ${{ jobs.version_calc.outputs.is_release }}
+      issue_str:
+        description: "Issue string"
+        value: ${{ jobs.version_calc.outputs.issue_str }}
     secrets:
       SOURCE_KEY:
         required: false
@@ -45,6 +48,7 @@ jobs:
       calculated_version: ${{ steps.calculate_version.outputs.new_version }}
       release_override_found: ${{ steps.calculate_version.outputs.release_override_found }}
       is_release: ${{ steps.calculate_version.outputs.is_release }}
+      issue_str: ${{ steps.calculate_version.outputs.issue_str }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -127,8 +131,9 @@ jobs:
           release_labels = valid_labels.intersection(set(rel_labels))
           num_release_labels_found = len(release_labels) 
           if num_release_labels_found != 1:
-              print("Multiple release labels found, please only use one release label")             
+              print("Multiple release labels found, please only use one release label")
               # exit, if multiple is set, then something is wrong and we really do not want to do any release
+              set_output("issue_str", "Multiple release labels found, please only use one release label")
               exit(1)
       
           release_label = release_labels[0]
