@@ -116,7 +116,7 @@ jobs:
           is_pr = "${{ github.event_name == 'pull_request_target' }}"
           
           if len(rel_labels) == 0:
-            if is_pr:
+            if is_pr == "true":
               rel_labels.add("release-skip")
             else:
               rel_labels.add("release-auto")
