@@ -9,11 +9,6 @@ on:
         type: string
         required: false
         default: "3.11"
-      config_toml_data:
-        description: "Toml config file data for actions base64 encoded"
-        type: string
-        required: false
-        default: ""
       config_toml_file:
         description: "config file in repo for actions"
         type: string
@@ -57,7 +52,7 @@ jobs:
           fetch-depth: 0
 
       - name: Add current title as commit for semantic release calculation
-        if: ${{ github.event_name == 'pull_request' }} # only run if it's a PR
+        if: ${{ github.event_name == 'pull_request_target' }} # only run if it's a PR target
         run: |
           git config --global user.email "dummy@dummy.com"
           git config --global user.name "dummy"
@@ -113,8 +108,13 @@ jobs:
           
           label_names = json.loads(os.environ["LABELS"])
           rel_labels = {l for l in label_names if l.startswith("release-")}
+          is_pr = "${{ github.event_name == 'pull_request_target' }}"
+          
           if len(rel_labels) == 0:
+            if is_pr == "true":
               rel_labels.add("release-skip")
+            else:
+              rel_labels.add("release-auto")
       
           # Command to execute
           command = ["semantic-release", "--config", os.getenv("TOML_FILE"), "--noop", "version"]

@@ -30,22 +30,14 @@ env:
   RELEASE_OVERRIDE: ${{ inputs.release_override }}
 
 jobs:
-  load-config:
-    if: ${{ inputs.release_override == '' }}
-    uses: ./.github/workflows/tool-load-config.yaml
-    with:
-      config_toml_file: ${{ inputs.config_toml_file }}
-
   pr-version-calculate:
     uses: ./.github/workflows/tool-pr-version-calculate.yaml
-    needs: load-config
     with:
-      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
       config_toml_file: ${{ inputs.config_toml_file }}
 
   generateRelease:
     needs: pr-version-calculate
-    if: ${{ needs.pr-version-calculate.outputs.is_release == 'true' }}
+    if: ${{ needs.pr-version-calculate.outputs.is_release == 'true' || inputs.release_override != '' }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write

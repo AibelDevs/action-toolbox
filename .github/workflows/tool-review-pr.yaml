@@ -32,9 +32,7 @@ jobs:
 
   pr-version-calculate:
     uses: ./.github/workflows/tool-pr-version-calculate.yaml
-    needs: load-config
     with:
-      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
       config_toml_file: ${{ inputs.config_toml_file }}
 
   pr-lint-checker:
