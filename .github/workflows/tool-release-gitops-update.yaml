@@ -210,7 +210,7 @@ jobs:
           
           docker_enabled_ref_names = {x["ref_name"] for x in docker_matrix["docker"] if x["enabled"]}
           
-          docker_images = {x["docker_ref"] for x in gitops_matrix["gitops"] if x["enabled"]
+          docker_images = {x["docker_ref"] for x in gitops_matrix["gitops"] if x["enabled"]}
           
           print("Docker Images:", docker_images)
           
