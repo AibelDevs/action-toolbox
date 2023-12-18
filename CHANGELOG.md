@@ -2,6 +2,22 @@
 
 
 
+## v1.3.1 (2023-12-18)
+
+### Fix
+
+* fix: Manual dispatch (#19) ([`6ecded3`](https://github.com/AibelDevs/action-toolbox/commit/6ecded3dfe29e3b7d5585468af762e45c4babcd0))
+
+* fix: calculate version / release when using skip release (#18)
+
+Co-authored-by: Vegar Ringdal &lt;vegar.ringdal@gmail.com&gt;
+Co-authored-by: krande &lt;kristoffer_andersen@outlook.com&gt; ([`e4a5034`](https://github.com/AibelDevs/action-toolbox/commit/e4a5034ad32dad6aa5209e1b330f30c130f22a27))
+
+### Unknown
+
+* update tool for pr version calculate and add a manual dispatch example ([`0067f95`](https://github.com/AibelDevs/action-toolbox/commit/0067f95a7334fef6d911a42893a76cca4572d1d8))
+
+
 ## v1.3.0 (2023-12-15)
 
 ### Feature
