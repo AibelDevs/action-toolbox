@@ -9,11 +9,6 @@ on:
         type: string
         required: false
         default: "3.11"
-      config_toml_data:
-        description: "Toml config file data for actions base64 encoded"
-        type: string
-        required: false
-        default: ""
       config_toml_file:
         description: "config file in repo for actions"
         type: string
