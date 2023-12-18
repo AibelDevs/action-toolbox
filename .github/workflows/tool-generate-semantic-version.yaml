@@ -37,7 +37,7 @@ jobs:
 
   generateRelease:
     needs: pr-version-calculate
-    if: ${{ needs.pr-version-calculate.outputs.is_release == 'true' || env.RELEASE_OVERRIDE != '' }}
+    if: ${{ needs.pr-version-calculate.outputs.is_release == 'true' || inputs.release_override != '' }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
