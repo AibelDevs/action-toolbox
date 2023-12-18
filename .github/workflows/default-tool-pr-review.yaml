@@ -2,6 +2,10 @@ name: Default Review Pull Request
 
 on:
   workflow_call:
+    outputs:
+      REVIEW_OK:
+        description: "Is the PR ok"
+        value: ${{ jobs.pr-review-summary.outputs.REVIEW_OK }}
     secrets:
       SOURCE_KEY:
         required: true
@@ -80,6 +84,8 @@ jobs:
     needs: [ load-config, pr-review, python-review, docker-review, gitops-review ]
     if: always()
     runs-on: ubuntu-latest
+    outputs:
+      REVIEW_OK: ${{ steps.comment_body.outputs.REVIEW_OK }}
     steps:
       - name: Set up Python
         uses: actions/setup-python@v3
