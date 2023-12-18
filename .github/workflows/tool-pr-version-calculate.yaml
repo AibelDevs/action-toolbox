@@ -70,7 +70,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install toml==0.10.2 python-semantic-release==8.1.1
+          pip install toml==0.10.2 python-semantic-release==8.5.1
 
       - name: Get latest release tag
         shell: python
@@ -104,7 +104,7 @@ jobs:
           import json
 
           def set_output(name, value):
-              with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              with open(os.environ["GITHUB_OUTPUT"], "w") as fh:
                   print(f"{name}={value}", file=fh)
       
           label_names = json.loads(os.environ["LABELS"])
@@ -180,7 +180,7 @@ jobs:
           print(f"{new_version=}")
       
           if cur_version != new_version:
-              print("New version found")
-              set_output("new_version", str(output))
-              set_output("release_override_found", forced_release)
-              set_output("is_release", "true")
+            print("New version found")
+            set_output("new_version", output)
+            set_output("release_override_found", forced_release)
+            set_output("is_release", "true")
