@@ -119,7 +119,7 @@ jobs:
           image_name = docker_to_gitops["image_name"]
           tag = "${{ inputs.release_tag_override }}"
           
-          docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}"
+          docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}" + " # github branch name/ref name: ${{ github.ref_name }}/ ${{ github.ref }}"
           gitops_file = "${{ matrix.gitops.file }}"
           kind = "${{ matrix.gitops.kind }}"
         
