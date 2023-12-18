@@ -103,9 +103,8 @@ jobs:
           
           if len(intersect_labels) == 0:
             set_env("ADD_DEFAULT_LABEL", "true")
-            set_output("contains_release_label", "true")
-          else:
-            set_output("contains_release_label", "true")
+            
+          set_output("contains_release_label", "true")
 
 
       - name: Add default labels to selection
