@@ -104,9 +104,12 @@ jobs:
           import json
 
           def set_output(name, value):
-              with open(os.environ["GITHUB_OUTPUT"], "w") as fh:
-                  print(f"{name}={value}", file=fh)
-      
+              with open(os.environ['GITHUB_ENV'], 'r') as fh:
+                  data = fh.read().strip()
+              with open(os.environ['GITHUB_ENV'], 'w') as fh:
+                  data += f"\n{name}={value}\n"    
+                  fh.write(data)
+          
           label_names = json.loads(os.environ["LABELS"])
           rel_labels = {l for l in label_names if l.startswith("release-")}
           if len(rel_labels) == 0:
