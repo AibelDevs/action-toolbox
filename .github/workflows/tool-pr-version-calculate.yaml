@@ -57,7 +57,6 @@ jobs:
           fetch-depth: 0
 
       - name: Add current title as commit for semantic release calculation
-        if: ${{ github.event_name == 'pull_request' }} # only run if it's a PR
         run: |
           git config --global user.email "dummy@dummy.com"
           git config --global user.name "dummy"
