@@ -16,7 +16,7 @@ on:
         description: "python-semantic-release pkg to use"
         type: string
         required: false
-        default: "8.1.1"
+        default: "8.5.1"
       release_override:
         description: "if set this will override semantic release and labels used"
         type: string
