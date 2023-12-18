@@ -97,7 +97,7 @@ jobs:
             return base64.b64decode(s).decode('utf-8')
           
           # GITOPS Review results
-          body = "# Gitops Review:\n\n"
+          body = "\n# Gitops Review:\n\n"
           
           # Check if gitops updates dry run was successful or not
           update_logs_ok = '${{ needs.test_gitops.outputs.update_logs_ok }}' == 'true' 

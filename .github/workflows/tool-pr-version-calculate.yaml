@@ -138,13 +138,14 @@ jobs:
       
           release_label = list(rel_labels)[0]
           forced_release = release_label_map[release_label]
+          latest_release_tag = os.getenv("LATEST_RELEASE_TAG")
       
           # temp debug..
           print(f"{rel_labels=}")
           print(f"{num_release_labels_found=}")
           print(f"{release_label=}")
           print(f"{forced_release=}")
-          print("LATEST_RELEASE_TAG"+os.getenv("LATEST_RELEASE_TAG"))
+          print(f"{latest_release_tag=}")
       
           if release_label == "release-skip":
               # exit if skip release

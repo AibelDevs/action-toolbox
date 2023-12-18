@@ -100,6 +100,7 @@ jobs:
         env:
           DOCKER_MATRIX: ${{ inputs.docker_matrix }}
         working-directory: ./gitops
+        continue-on-error: true
         shell: python
         run: |
           import ruamel.yaml
