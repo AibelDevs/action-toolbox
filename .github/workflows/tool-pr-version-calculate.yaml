@@ -82,12 +82,10 @@ jobs:
           all_tags = os.popen('git tag').read().splitlines()
           semver_tags = [tag for tag in all_tags if re.match(r'^v\d+\.\d+\.\d+$', tag)]
           if semver_tags:
-              # get the latest semver tag
-              semver_tags.sort(key=lambda s: list(map(int, s[1:].split('.'))), reverse=True)
-              latest_semver_tag = semver_tags[0]
+              latest_semver_tag = semver_tags[-1]
           else:
               latest_semver_tag = 'v0.0.0'  # default if no semver tags found
-
+          
           set_env("LATEST_RELEASE_TAG", latest_semver_tag)
 
       - name: Check the calculated version from semantic release
@@ -106,7 +104,7 @@ jobs:
                   print(f"{name}={value}", file=fh)
       
           label_names = json.loads(os.environ["LABELS"])
-          rel_labels = [l for l in label_names if l.startswith("release-")]
+          rel_labels = {l for l in label_names if l.startswith("release-")}
           if len(rel_labels) == 0:
               rel_labels.append("release-skip")
       
@@ -126,25 +124,22 @@ jobs:
           }
       
           valid_labels = set(release_label_map.keys())
-          release_labels_found = len(valid_labels.intersection(set(rel_labels)))
-          if release_labels_found != 1:
-              if len(rel_labels) > 1:
-                  print("Multiple release labels found, please only use one release label")
-              else:
-                  print("No valid release label found, please use one of:")
-                  print(valid_labels)
+          release_labels = valid_labels.intersection(set(rel_labels))
+          num_release_labels_found = len(release_labels) 
+          if num_release_labels_found != 1:
+              print("Multiple release labels found, please only use one release label")             
               # exit, if multiple is set, then something is wrong and we really do not want to do any release
               exit(1)
       
-          release_label = rel_labels[0]
+          release_label = release_labels[0]
           forced_release = release_label_map[release_label]
       
           # temp debug..
-          print(rel_labels)
-          print(release_labels_found)
-          print(release_label)
-          print(forced_release)
-          print(os.getenv("LATEST_RELEASE_TAG"))
+          print(f"{rel_labels=}")
+          print(f"{release_labels_found=}")
+          print(f"{release_label=}")
+          print(f"{forced_release=}")
+          print("LATEST_RELEASE_TAG"+os.getenv("LATEST_RELEASE_TAG"))
       
           if release_label == "release-skip":
               # exit if skip release
@@ -175,8 +170,8 @@ jobs:
           new_version = f"v{output}"
       
           # debug print
-          print(cur_version)
-          print(new_version)
+          print(f"{cur_version=}")
+          print(f"{new_version=}")
       
           if cur_version != new_version:
               set_output("new_version", str(output))
