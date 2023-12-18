@@ -112,7 +112,7 @@ jobs:
             body += "\n * ✅ SOURCE_KEY is set as a secret"
           
           next_version = "${{ needs.pr-version-calculate.outputs.calculated_version }}"
-          
+          print(f"{next_version=}")
           if next_version == "":
             body += f'\n * ✅ Skipping release'
           else:

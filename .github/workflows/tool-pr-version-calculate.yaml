@@ -180,6 +180,7 @@ jobs:
           print(f"{new_version=}")
       
           if cur_version != new_version:
+              print("New version found")
               set_output("new_version", str(output))
               set_output("release_override_found", forced_release)
               set_output("is_release", "true")
