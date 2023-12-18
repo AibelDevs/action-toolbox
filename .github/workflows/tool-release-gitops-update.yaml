@@ -175,6 +175,7 @@ jobs:
         id: summarize_build_logs  # Set an ID for this step to reference its outputs
         env:
           GITOPS_MATRIX: ${{ inputs.gitops_matrix }}
+          DOCKER_MATRIX: ${{ inputs.docker_matrix }}
         shell: python
         run: |
           import os
@@ -196,13 +197,16 @@ jobs:
           
           # check if the gitops update was successful or not
           gitops_matrix = json.loads(os.environ['GITOPS_MATRIX'])
+          docker_matrix = json.loads(os.environ['DOCKER_MATRIX'])
           
-          docker_images = [x["docker_ref"] for x in gitops_matrix["gitops"]]
+          docker_enabled_ref_names = {x["ref_name"] for x in docker_matrix["docker"] if x["enabled"]}
+          
+          docker_images = {x["docker_ref"] for x in gitops_matrix["gitops"]}
           
           print("Docker Images:", docker_images)
           
           # Compare build_logs and docker_images and ensure that they are equal disregarding order
-          has_docker_build = set(docker_images) == set(build_logs)
+          has_docker_build = docker_images == set(build_logs)
           if has_docker_build:
             set_output('build_log_ok', "true")
           else:
@@ -213,4 +217,16 @@ jobs:
           else:
             run_review_str = "\n* ❌ Gitops update dry-run was not successful"
           
+          # Check if docker
+          if docker_enabled_ref_names != docker_images:
+            run_review_str += "\n* ❌ Docker images were not built for all enabled docker refs"
+            
+            # find the gitops refs that were not built
+            missing_docker_images = docker_images - docker_enabled_ref_names
+            run_review_str += "\n  * Docker image ref issues: " + ", ".join(missing_docker_images)
+          
+          else:
+            run_review_str += "\n* ✅ Docker images were built for all enabled docker refs"
+          
+          print(f"{run_review_str=}")
           set_output('build_log_summary', run_review_str, True)

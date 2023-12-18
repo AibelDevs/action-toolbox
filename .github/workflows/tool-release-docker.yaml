@@ -52,6 +52,7 @@ env:
 jobs:
   build_docker:
     name: Build Docker "${{ matrix.docker.ref_name }}"
+    if: matrix.docker.enabled == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

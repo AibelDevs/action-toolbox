@@ -110,7 +110,7 @@ jobs:
           label_names = json.loads(os.environ["LABELS"])
           rel_labels = {l for l in label_names if l.startswith("release-")}
           if len(rel_labels) == 0:
-              rel_labels.append("release-skip")
+              rel_labels.add("release-skip")
       
           # Command to execute
           command = ["semantic-release", "--config", os.getenv("TOML_FILE"), "--noop", "version"]
@@ -128,7 +128,7 @@ jobs:
           }
       
           valid_labels = set(release_label_map.keys())
-          release_labels = valid_labels.intersection(set(rel_labels))
+          release_labels = valid_labels.intersection(rel_labels)
           num_release_labels_found = len(release_labels) 
           if num_release_labels_found != 1:
               print("Multiple release labels found, please only use one release label")
@@ -136,7 +136,7 @@ jobs:
               set_output("issue_str", "Multiple release labels found, please only use one release label")
               exit(1)
       
-          release_label = release_labels[0]
+          release_label = list(rel_labels)[0]
           forced_release = release_label_map[release_label]
       
           # temp debug..
