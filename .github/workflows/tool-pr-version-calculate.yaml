@@ -57,7 +57,6 @@ jobs:
           git config --global user.email "dummy@dummy.com"
           git config --global user.name "dummy"
           git commit --allow-empty -m "${{ github.event.pull_request.title }}"
-          echo "LATEST_RELEASE_TAG=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
 
       - name: Set up Python ${{ inputs.python_version }}
         uses: actions/setup-python@v3
@@ -69,106 +68,117 @@ jobs:
           python -m pip install --upgrade pip
           pip install toml==0.10.2 python-semantic-release==8.1.1
 
+      - name: Get latest release tag
+        shell: python
+        run: |
+          import os
+          import re
+
+          def set_env(name, value):
+            with open(os.environ['GITHUB_ENV'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+
+          # get all tags and filter for semver format with prefix 'v'
+          all_tags = os.popen('git tag').read().splitlines()
+          semver_tags = [tag for tag in all_tags if re.match(r'^v\d+\.\d+\.\d+$', tag)]
+          if semver_tags:
+              # get the latest semver tag
+              semver_tags.sort(key=lambda s: list(map(int, s[1:].split('.'))), reverse=True)
+              latest_semver_tag = semver_tags[0]
+          else:
+              latest_semver_tag = 'v0.0.0'  # default if no semver tags found
+
+          set_env("LATEST_RELEASE_TAG", latest_semver_tag)
+
       - name: Check the calculated version from semantic release
         shell: python
         id: calculate_version
         env:
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          TOML_FILE: ${{ inputs.config_toml_file }}
         run: |
           import subprocess
           import os
           import json
-          import base64
-
-          def deserialize_str(s):
-            return base64.b64decode(s).decode('utf-8')
 
           def set_output(name, value):
-            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-                print(f'{name}={value}', file=fh)
-
-          # Get up-to-date action_config.toml data from incoming PR branch.
-          toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
-
-          label_names = json.loads(os.environ['LABELS'])
-          rel_labels = [l for l in label_names if l.startswith('release-')]
+              with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+                  print(f"{name}={value}", file=fh)
+      
+          label_names = json.loads(os.environ["LABELS"])
+          rel_labels = [l for l in label_names if l.startswith("release-")]
           if len(rel_labels) == 0:
-            rel_labels.append('release-skip')
-
+              rel_labels.append("release-skip")
+      
           # Command to execute
-          command = ["semantic-release", "--config", "${{ inputs.config_toml_file }}", "--noop", "version"]
-
-
+          command = ["semantic-release", "--config", os.getenv("TOML_FILE"), "--noop", "version"]
+      
           # verify labels and only run version calculation if its a release
           # if skip we do not return any version/set is_release to true
           # if more then one label we do not return any version//set is_release to true
-
+      
           release_label_map = {
               "release-skip": "",
               "release-auto": "",
               "release-patch": "--patch",
               "release-minor": "--minor",
-              "release-major": "--major"
+              "release-major": "--major",
           }
-
-          def check_label(label_name, cur_count, cur_label, cur_force_release):
-              if label_name in release_label_map:
-                  return (cur_count + 1, label_name, release_label_map[label_name])
-              return (cur_count, cur_label, cur_force_release)
-
-          # defaults
-          release_labels_found = 0
-          release_label = "release-skip"
-          forced_release = ""
-
-          for label in rel_labels:
-              (release_labels_found, release_label, forced_release) = check_label(
-                  label, release_labels_found, release_label, forced_release)
-
+      
+          valid_labels = set(release_label_map.keys())
+          release_labels_found = len(valid_labels.intersection(set(rel_labels)))
+          if release_labels_found != 1:
+              if len(rel_labels) > 1:
+                  print("Multiple release labels found, please only use one release label")
+              else:
+                  print("No valid release label found, please use one of:")
+                  print(valid_labels)
+              # exit, if multiple is set, then something is wrong and we really do not want to do any release
+              exit(1)
+      
+          release_label = rel_labels[0]
+          forced_release = release_label_map[release_label]
+      
           # temp debug..
           print(rel_labels)
           print(release_labels_found)
           print(release_label)
           print(forced_release)
-          print("${{ env.LATEST_RELEASE_TAG }}")
-
-          if release_labels_found != 1:
-            # exit, if multible is set, then something is wrong and we really do not want to do any release
-            exit()
-
+          print(os.getenv("LATEST_RELEASE_TAG"))
+      
           if release_label == "release-skip":
-            # exit if skip release
-            exit()
-
+              # exit if skip release
+              exit(0)
+      
           if forced_release != "":
-            command.append(forced_release)
-
+              command.append(forced_release)
+      
           # debug print
-          print(command)      
-
+          print(command)
+      
           # Running the command and capturing output
           result = subprocess.run(command, capture_output=True, text=True)
-
+      
           # Extracting the output
           output = result.stdout.strip()
-
+      
           # print any errors
           if result.stderr:
               print(result.stderr)
-
+      
           # The version name should be in the output
           print(f'Captured Version Name: "{output}"')
-
+      
           # Compare current tag with new so we know if its new
-
-          cur_version = "${{ env.LATEST_RELEASE_TAG }}"
+      
+          cur_version = os.getenv("LATEST_RELEASE_TAG")
           new_version = f"v{output}"
-
+      
           # debug print
           print(cur_version)
           print(new_version)
-
+      
           if cur_version != new_version:
-            set_output('new_version', str(output))
-            set_output('release_override_found', forced_release)
-            set_output('is_release', "true")
+              set_output("new_version", str(output))
+              set_output("release_override_found", forced_release)
+              set_output("is_release", "true")
