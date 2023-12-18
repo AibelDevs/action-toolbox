@@ -30,12 +30,6 @@ env:
   RELEASE_OVERRIDE: ${{ inputs.release_override }}
 
 jobs:
-  load-config:
-    if: ${{ inputs.release_override == '' }}
-    uses: ./.github/workflows/tool-load-config.yaml
-    with:
-      config_toml_file: ${{ inputs.config_toml_file }}
-
   pr-version-calculate:
     uses: ./.github/workflows/tool-pr-version-calculate.yaml
     with:
