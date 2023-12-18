@@ -217,18 +217,19 @@ jobs:
           
           # Compare build_logs and docker_images and ensure that they are equal disregarding order
           has_docker_build = docker_images == set(build_logs)
-          if has_docker_build:
-            set_output('build_log_ok', "true")
-          else:
-            set_output('build_log_ok', "false")
           
+          all_checks = []
+          all_checks.append(has_docker_build)
           if has_docker_build:
             run_review_str = "\n* ✅ Gitops update dry-run was successful"
           else:
             run_review_str = "\n* ❌ Gitops update dry-run was not successful"
           
-          # Check if docker
-          if docker_enabled_ref_names != docker_images:
+          # Check if docker images were built for all enabled docker refs
+          docker_gitops_match = docker_enabled_ref_names == docker_images
+          all_checks.append(docker_gitops_match)
+          
+          if not docker_gitops_match:
             run_review_str += "\n* ❌ Number of enabled docker images does not match enabled gitops docker_refs."
 
             # find the gitops refs that were not built
@@ -238,6 +239,11 @@ jobs:
           
           else:
             run_review_str += "\n* ✅ Docker images were built for all enabled docker refs"
+          
+          if all(all_checks):
+            set_output('build_log_ok', "true")
+          else:
+            set_output('build_log_ok', "false")
           
           print(f"{run_review_str=}")
           set_output('build_log_summary', run_review_str, True)
