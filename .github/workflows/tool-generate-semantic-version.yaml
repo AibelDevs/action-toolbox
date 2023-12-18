@@ -16,9 +16,9 @@ on:
         description: "python-semantic-release pkg to use"
         type: string
         required: false
-        default: "8.1.1"
+        default: "8.5.1"
       release_override:
-        description: "if blank it will not run"
+        description: "if set this will override semantic release and labels used"
         type: string
         required: false
         default: ""
@@ -45,7 +45,7 @@ jobs:
 
   generateRelease:
     needs: pr-version-calculate
-    if: always()
+    if: ${{ needs.pr-version-calculate.outputs.is_release == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -68,9 +68,9 @@ jobs:
             with open(os.environ['GITHUB_ENV'], 'a') as fh:
                 print(f'{name}={value}', file=fh)
           
-          bump_level = "${{ needs.pr-version-calculate.outputs.calculated_bump_level }}"
-          if bump_level != '':
-            set_env('RELEASE_OVERRIDE', bump_level)  
+          release_override_found = "${{ needs.pr-version-calculate.outputs.release_override_found }}"
+          if release_override_found != '':
+            set_env('RELEASE_OVERRIDE', release_override_found)  
           
 
       - name: Set up Python ${{ inputs.python_version }}

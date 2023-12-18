@@ -55,23 +55,34 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(inputs.docker_matrix) }}
+      matrix: ${{ fromJson( inputs.docker_matrix ) }}
     steps:
+      - name: Check if matrix.docker.enabled is true
+        run: |
+          if [[ "${{ matrix.docker.enabled }}" == "false" ]]; then
+            echo "Docker is disabled for this tool"
+            echo "DOCKER_DISABLED=true" >> $GITHUB_ENV
+          fi
+
       - name: Checkout git
+        if: env.DOCKER_DISABLED != 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - uses: actions/setup-python@v4
+        if: env.DOCKER_DISABLED != 'true'
         with:
           python-version: ${{ inputs.python_version }}
 
       - name: Install deps
+        if: env.DOCKER_DISABLED != 'true'
         run: |
           pip install --upgrade pip
           pip install toml==0.10.2
 
       - name: Check if release override contains "next"
+        if: env.DOCKER_DISABLED != 'true'
         id: check_release_override
         env:
           INPUT_DOCKER_TAG_OVERRIDE: ${{ inputs.docker_tag_override }}
@@ -94,7 +105,7 @@ jobs:
               set_env('IS_PRE_RELEASE', 'false')
 
       - name: Update pyproject.toml and package.json (if exists) on pre-release
-        if: env.IS_PRE_RELEASE == 'true'
+        if: env.IS_PRE_RELEASE == 'true' && env.DOCKER_DISABLED != 'true'
         env:
           INPUT_DOCKER_TAG_OVERRIDE: ${{ inputs.docker_tag_override }}
         shell: python
@@ -153,12 +164,12 @@ jobs:
                     json.dump(json_data, file)
 
       - name: Build docker image with ${{ steps.set_release_tag.outputs.docker_tag }} tag
-        if: inputs.create_build_logs == 'false'
+        if: inputs.create_build_logs == 'false' && env.DOCKER_DISABLED != 'true'
         run: |
           docker build -f ${{ matrix.docker.context }}/${{ matrix.docker.docker_file }} -t ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:${{ inputs.docker_tag_override }} ${{ matrix.docker.context }}
 
       - name: Build docker image with latest tag
-        if: (inputs.docker_use_latest == 'true') || (inputs.create_build_logs == 'true')
+        if: ((inputs.docker_use_latest == 'true') || (inputs.create_build_logs == 'true')) && env.DOCKER_DISABLED != 'true'
         run: |
           docker build -f ${{ matrix.docker.context }}/${{ matrix.docker.docker_file }} -t ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest ${{ matrix.docker.context }}
           # if inputs.create_build_logs == 'true' then we will echo to file
@@ -168,7 +179,7 @@ jobs:
           fi
 
       - name: Upload Build Log
-        if: inputs.create_build_logs == 'true'
+        if: inputs.create_build_logs == 'true' && env.DOCKER_DISABLED != 'true'
         uses: actions/upload-artifact@v3
         continue-on-error: true # Needed to continue in the event the build fails and no build log is found
         with:
@@ -176,7 +187,7 @@ jobs:
           path: build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
 
       - name: Source - login to ACR
-        if: inputs.push_docker == 'true'
+        if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
         uses: docker/login-action@v3.0.0
         with:
           registry: ${{ secrets.CONTAINER_REGISTRY_URL }}
@@ -184,12 +195,12 @@ jobs:
           password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
       - name: Push docker image with ${{ inputs.docker_tag_override }} tag
-        if: inputs.push_docker == 'true'
+        if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
         run: |
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:${{ inputs.docker_tag_override }}
 
       - name: Push docker image with latest tag
-        if: inputs.docker_use_latest == 'true' && inputs.docker_push == 'true' && env.IS_PRE_RELEASE == 'false'
+        if: inputs.docker_use_latest == 'true' && inputs.docker_push == 'true' && env.IS_PRE_RELEASE == 'false' && env.DOCKER_DISABLED != 'true'
         run: |
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
 

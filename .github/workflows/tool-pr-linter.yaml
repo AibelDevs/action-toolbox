@@ -97,16 +97,14 @@ jobs:
                 print(f'{name}={value}', file=fh)
           
           label_names = json.loads(os.environ['LABELS'])
-          valid_labels = set(['release-auto', 'release-patch', 'release-minor', 'release-major', 'release-skip'])
+          valid_labels = {'release-auto', 'release-patch', 'release-minor', 'release-major', 'release-skip'}
           
-          if len(label_names) == 0:
+          intersect_labels = valid_labels.intersection(label_names)
+          
+          if len(intersect_labels) == 0:
             set_env("ADD_DEFAULT_LABEL", "true")
-            set_output("contains_release_label", "true")
-          else:
-            if len(valid_labels.intersection(label_names)) == 0:
-              set_output("contains_release_label", "false")
-            else:
-              set_output("contains_release_label", "true")
+            
+          set_output("contains_release_label", "true")
 
 
       - name: Add default labels to selection

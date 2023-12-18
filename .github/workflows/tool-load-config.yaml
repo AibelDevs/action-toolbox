@@ -56,7 +56,7 @@ on:
 
 jobs:
   config:
-    name: Load toml config
+    name: Load toml config "${{ inputs.config_toml_file }}"
     runs-on: ubuntu-latest
     outputs:
       docker_enabled: ${{ steps.config.outputs.docker_enabled }}
