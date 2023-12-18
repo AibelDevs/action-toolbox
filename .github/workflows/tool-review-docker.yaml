@@ -127,7 +127,7 @@ jobs:
           
           print("Build Log:", build_logs)
           docker_matrix = json.loads(os.environ['DOCKER_MATRIX_STR'])["docker"]
-          docker_images = [x["ref_name"] for x in docker_matrix]
+          docker_images = [x["ref_name"] for x in docker_matrix if x["enabled"]]
           
           print("Docker Images:", docker_images)
           
