@@ -2,6 +2,13 @@
 
 
 
+## v1.3.3 (2023-12-20)
+
+### Fix
+
+* fix: catch yaml issues in gitops (#22) ([`46f9ad3`](https://github.com/AibelDevs/action-toolbox/commit/46f9ad33c87ab9b9ea07bb7e8ea5ef95f783effd))
+
+
 ## v1.3.2 (2023-12-20)
 
 ### Fix
