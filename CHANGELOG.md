@@ -2,6 +2,13 @@
 
 
 
+## v1.3.2 (2023-12-20)
+
+### Fix
+
+* fix: use graceful exit for pr version calc (#21) ([`b482654`](https://github.com/AibelDevs/action-toolbox/commit/b4826542290b58c52ae1f37f4a5d1af7e6dc1c65))
+
+
 ## v1.3.1 (2023-12-18)
 
 ### Fix
