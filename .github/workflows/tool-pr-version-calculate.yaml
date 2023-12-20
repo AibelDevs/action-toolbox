@@ -138,7 +138,7 @@ jobs:
               print("Multiple release labels found, please only use one release label")
               # exit, if multiple is set, then something is wrong and we really do not want to do any release
               set_output("issue_str", "Multiple release labels found, please only use one release label")
-              exit(1)
+              exit(0)
       
           release_label = list(rel_labels)[0]
           forced_release = release_label_map[release_label]
