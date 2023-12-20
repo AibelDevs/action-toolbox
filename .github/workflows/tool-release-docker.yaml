@@ -169,7 +169,7 @@ jobs:
           docker build -f ${{ matrix.docker.context }}/${{ matrix.docker.docker_file }} -t ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:${{ inputs.docker_tag_override }} ${{ matrix.docker.context }}
 
       - name: Build docker image with latest tag
-        if: ((inputs.docker_use_latest == 'true') || (inputs.create_build_logs == 'true')) && env.DOCKER_DISABLED != 'true'
+        if: ((matrix.docker.use_latest == 'true') || (inputs.create_build_logs == 'true')) && env.DOCKER_DISABLED != 'true'
         run: |
           docker build -f ${{ matrix.docker.context }}/${{ matrix.docker.docker_file }} -t ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest ${{ matrix.docker.context }}
           # if inputs.create_build_logs == 'true' then we will echo to file
@@ -200,7 +200,7 @@ jobs:
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:${{ inputs.docker_tag_override }}
 
       - name: Push docker image with latest tag
-        if: inputs.docker_use_latest == 'true' && inputs.docker_push == 'true' && env.IS_PRE_RELEASE == 'false' && env.DOCKER_DISABLED != 'true'
+        if: matrix.docker.use_latest == 'true' && inputs.docker_push == 'true' && env.IS_PRE_RELEASE == 'false' && env.DOCKER_DISABLED != 'true'
         run: |
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
 
