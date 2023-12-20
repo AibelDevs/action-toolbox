@@ -138,7 +138,7 @@ jobs:
           set_output('current_version', current_version)
 
   release_pypi:
-    if: ${{ github.event.inputs.release_pypi == 'true' }}
+    if: ${{ inputs.release_pypi == 'true' }}
     needs: [ load-config, bump_version ]
     uses: ./.github/workflows/tool-release-pip.yaml
     with:
@@ -151,7 +151,7 @@ jobs:
       CUSTOM_PYPI_URL: ${{ secrets.CUSTOM_PYPI_URL }}
 
   release_conda:
-    if: ${{ github.event.inputs.release_conda == 'true' }}
+    if: ${{ inputs.release_conda == 'true' }}
     needs: [ load-config, bump_version ]
     uses: ./.github/workflows/tool-release-conda.yaml
     with:
@@ -166,7 +166,7 @@ jobs:
       QUETZ_URL: ${{ secrets.QUETZ_URL }}
 
   release_docker:
-    if: ${{ github.event.inputs.release_docker == 'true' }}
+    if: ${{ inputs.release_docker == 'true' }}
     needs: [bump_version, load-config ]
     uses: ./.github/workflows/tool-release-docker.yaml
     with:
@@ -179,7 +179,7 @@ jobs:
       CONTAINER_REGISTRY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
   release_gitops:
-    if: ${{ github.event.inputs.release_gitops == 'true' }}
+    if: ${{ inputs.release_gitops == 'true' }}
     needs: [ bump_version, release_docker, load-config ]
     uses: ./.github/workflows/tool-release-gitops-update.yaml
     with:
