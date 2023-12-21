@@ -2,6 +2,16 @@
 
 
 
+## v1.3.4 (2023-12-21)
+
+### Fix
+
+* fix: docker / gitops inputs and docker latest tag to action_config.yaml (#23)
+
+Co-authored-by: Vegar Ringdal &lt;vegar.ringdal@gmail.com&gt;
+Co-authored-by: krande &lt;kristoffer_andersen@outlook.com&gt; ([`d57c035`](https://github.com/AibelDevs/action-toolbox/commit/d57c0356dcce5933f1aa719c58141dc8a8be3a97))
+
+
 ## v1.3.3 (2023-12-20)
 
 ### Fix
