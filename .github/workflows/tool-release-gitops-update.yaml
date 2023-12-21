@@ -216,8 +216,7 @@ jobs:
           # Compare build_logs and docker_images and ensure that they are equal disregarding order
           has_docker_build = docker_images == set(build_logs)
           
-          all_checks = []
-          all_checks.append(has_docker_build)
+          all_checks = [has_docker_build]
           if has_docker_build:
             run_review_str = "\n* ✅ Gitops update dry-run was successful"
           else:

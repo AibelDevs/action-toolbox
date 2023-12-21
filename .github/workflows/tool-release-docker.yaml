@@ -200,7 +200,7 @@ jobs:
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:${{ inputs.docker_tag_override }}
 
       - name: Push docker image with latest tag
-        if: matrix.docker.use_latest == true && inputs.push_docker  == 'true' && env.DOCKER_DISABLED != 'true'
+        if: matrix.docker.use_latest == true && inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
         run: |
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
 
@@ -225,7 +225,6 @@ jobs:
           import os
           import pathlib
           import base64
-          import json
 
           def set_output(name, value, encode_it=False):
             if encode_it:
