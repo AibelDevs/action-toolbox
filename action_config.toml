@@ -4,6 +4,7 @@ version = "1.3.3"
 
 [[tool.docker]]
 enabled = false
+use_latest = true
 ref_name = "ImageApp"
 image_name = "app-python"
 team_name = "python-team"
@@ -13,6 +14,7 @@ context = "."
 # INFO:
 #
 # For building docker image, set to false if not needed
+# if you do not need :latest tag, set use_latest to false
 #
 # This expects to find these under github repo secrets
 # secrets.CONTAINER_REGISTRY_URL
