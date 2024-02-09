@@ -69,6 +69,9 @@ enabled = false
 # Related to Conda Build recipe
 recipe_dir = "./conda"
 extra_conda_dep_channels = ["krande"]
+platforms = "ubuntu-latest,windows-latest"
+python_versions = "3.11,3.12"
+publish_runner = "ubuntu-latest"
 
 # Anaconda Related
 use_anaconda_server = true

@@ -66,6 +66,7 @@ jobs:
     outputs:
       recipe_dir: ${{ steps.extract_conda_meta.outputs.recipe_dir }}
       quetz_channel: ${{ steps.extract_conda_meta.outputs.quetz_channel }}
+      publish_runner: ${{ steps.extract_conda_meta.outputs.publish_runner }}
     steps:
       - name: Extract recipe_dir
         id: extract_conda_meta
@@ -86,6 +87,7 @@ jobs:
           
           set_output('recipe_dir', toml_data["tool"]["python"]['conda']['recipe_dir'])
           set_output('quetz_channel', toml_data["tool"]["python"]['conda'].get('quetz_channel', None))
+          set_output('publish_runner', toml_data["tool"]["python"]['conda'].get('publish_runner', 'ubuntu-latest'))
 
 
   create_variant_matrix:
@@ -121,7 +123,7 @@ jobs:
         run: |
           # Running "shell: python" appears to only use the system python
 
-          python - <<EOF
+          python - << EOF
           import os
           import base64
           import itertools
@@ -134,10 +136,12 @@ jobs:
           def set_output(name, value):
               with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
                   print(f"{name}={value}", file=fh)
-
+          
+          
           def deserialize_str(s):
-            return base64.b64decode(s).decode('utf-8')
-
+              return base64.b64decode(s).decode('utf-8')
+          
+          
           def convert_to_byte_str(var_str: str) -> str:
               encoded_bytes = base64.b64encode(var_str.encode("utf-8"))
               var_bytes_str = encoded_bytes.decode("utf-8")
@@ -146,7 +150,7 @@ jobs:
 
           def variants_matrix_gen(recipe_dir, python, os_variants, add_build_str=""):
               combined_spec, config = get_config(recipe_dir)
-              print(f"combined_spec: {combined_spec}")          
+              print(f"combined_spec: {combined_spec}")
               matrix = {"builds": []}
               variants = []
               for key, value in combined_spec.items():
@@ -168,21 +172,21 @@ jobs:
               if len(variants) == 0:
                   var_dict = {"empty": "empty"}
                   variants.append(var_dict)
-          
+              
               itertools_product = itertools.product(python.split(","), os_variants.split(","), variants)
               for python_version, platform, var_dict in itertools_product:
                   build_args = f"--python {python_version}"
-                  os_short = os_map[platform] 
+                  os_short = os_map[platform]
                   key, val = list(var_dict.items())[0]
                   if key != "empty":
-                    build_args += f' --variants="{var_dict}"'
-                    header_name = f"{os_short}-{python_version}-{key}={val}"
+                      build_args += f' --variants="{var_dict}"'
+                      header_name = f"{os_short}-{python_version}-{key}={val}"
                   else:
-                    header_name = f"{os_short}-{python_version}"
-          
+                      header_name = f"{os_short}-{python_version}"
+                  
                   if add_build_str != "":
-                    build_args += add_build_str
-          
+                      build_args += add_build_str
+                  
                   run_object = {
                       "os": platform,
                       "os_short": os_short,
@@ -195,6 +199,7 @@ jobs:
                   matrix["builds"].append(run_object)
               return matrix
           
+          
           toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
           conda_config = toml_data["tool"]["python"]['conda']
           conda_owner = conda_config.get('owner', 'unset')
@@ -206,16 +211,15 @@ jobs:
           
           extra_build_str = ""
           for channel in extra_conda_channels:
-            extra_build_str += f" -c {channel}"
+              extra_build_str += f" -c {channel}"
           
           if "${{ inputs.push_conda }}" == "true":
-            extra_build_str += " --no-copy-test-source-files --no-test --no-build-id"
+              extra_build_str += " --no-copy-test-source-files --no-test --no-build-id"
           
           recipe_dir = "${{ needs.extract_conda_meta.outputs.recipe_dir }}"
           add_build_args = "${{ inputs.add_build_args }}"
-          python_versions = "${{ inputs.python_versions }}"
-          platforms = "${{ inputs.platforms }}"
-          variants_in = "${{ inputs.variants_input }}"
+          platforms = toml_data["tool"]["python"]['conda'].get('platforms', '${{ inputs.platforms }}')
+          python_versions = toml_data["tool"]["python"]['conda'].get('python_versions', '${{ inputs.python_versions }}')
 
           final_matrix = variants_matrix_gen(recipe_dir, python_versions, platforms, extra_build_str)
           set_output('final_matrix', json.dumps(final_matrix))
@@ -224,7 +228,7 @@ jobs:
   
   
 
-  conda_build_and_upload:
+  conda_build:
     name: Build "${{ matrix.builds.header_name }}"
     needs: [ create_variant_matrix, extract_conda_meta ]
     defaults:
@@ -268,8 +272,6 @@ jobs:
             python=3.11
             boa=0.16.0
             toml=0.10.2
-            anaconda-client=1.12.1
-            quetz-client=0.5.0
 
       - name: Override version
         if: ${{ inputs.version_override != '' }}
@@ -334,11 +336,42 @@ jobs:
           conda mambabuild . ${{ env.BUILD_ARGS }}
         working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-${{ matrix.builds.os }}-${{ matrix.builds.python }}-${{matrix.builds.key}}-${{matrix.builds.value}}
+          path: |
+            ${{ env.ARTIFACTS_DIR }}
+
+  release_conda:
+    name: Release
+    if: always()
+    needs: [conda_build, extract_conda_meta]
+    defaults:
+      run:
+        shell: bash -l {0}
+    runs-on: ${{ github.event.inputs.runs-on }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-*
+          path: my-artifacts
+
+      - uses: mamba-org/setup-micromamba@v1 # https://github.com/mamba-org/setup-micromamba
+        with:
+          environment-name: publish-env
+          cache-environment: true
+          create-args: >-
+            python=3.11
+            toml=0.10.2
+            anaconda-client=1.12.1
+            quetz-client=0.5.0
+
       - name: Upload packages to Quetz Server
         if: ${{ inputs.use_quetz_server == 'true' && inputs.push_conda == 'true' }}
         env:
           QUETZ_URL: ${{ secrets.QUETZ_URL }}
           QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
+          ARTIFACTS_DIR: my-artifacts
         run: |
           python - <<EOF
           
@@ -368,6 +401,7 @@ jobs:
         if: ${{ inputs.use_anaconda_server == 'true' && inputs.push_conda == 'true' }}
         env:
           ANACONDA_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
+          ARTIFACTS_DIR: my-artifacts
         run: |
           python - <<EOF
           
