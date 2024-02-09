@@ -339,23 +339,19 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-${{ matrix.builds.os }}-${{ matrix.builds.python }}-${{matrix.builds.key}}-${{matrix.builds.value}}
+          retention-days: 2
           path: |
             ${{ env.ARTIFACTS_DIR }}
 
   release_conda:
     name: Release
     if: always()
-    needs: [conda_build, extract_conda_meta]
+    needs: [ conda_build, extract_conda_meta ]
     defaults:
       run:
         shell: bash -l {0}
     runs-on: ${{ github.event.inputs.runs-on }}
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-*
-          path: my-artifacts
-
       - uses: mamba-org/setup-micromamba@v1 # https://github.com/mamba-org/setup-micromamba
         with:
           environment-name: publish-env
@@ -365,6 +361,22 @@ jobs:
             toml=0.10.2
             anaconda-client=1.12.1
             quetz-client=0.5.0
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-*
+          path: my-artifacts
+
+      - name: List artifacts
+        shell: python
+        run: |
+          import pathlib
+
+          for path in pathlib.Path("my-artifacts").rglob("*.conda"):
+              print(path)
+          
+          for path in pathlib.Path("my-artifacts").rglob("*.tar.bz2"):
+              print(path)
 
       - name: Upload packages to Quetz Server
         if: ${{ inputs.use_quetz_server == 'true' && inputs.push_conda == 'true' }}
