@@ -350,7 +350,7 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
-    runs-on: ${{ github.event.inputs.runs-on }}
+    runs-on: ${{ needs.extract_conda_meta.outputs.publish_runner }}
     steps:
       - uses: mamba-org/setup-micromamba@v1 # https://github.com/mamba-org/setup-micromamba
         with:
