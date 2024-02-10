@@ -364,6 +364,7 @@ jobs:
                 run_id: '${{ github.run_id }}',
                 use_quetz_server: '${{ inputs.use_quetz_server }}',
                 use_anaconda_server: '${{ inputs.use_anaconda_server }}',
+                quetz_channel: '${{ needs.extract_conda_meta.outputs.quetz_channel }}', 
               }
             });
           github-token: ${{ secrets.GITHUB_TOKEN }}
