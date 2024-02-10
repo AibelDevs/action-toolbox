@@ -72,6 +72,7 @@ extra_conda_dep_channels = ["krande"]
 platforms = "ubuntu-latest,windows-latest"
 python_versions = "3.11,3.12"
 publish_runner = "ubuntu-latest"
+artifacts_retention_days = 2
 
 # Anaconda Related
 use_anaconda_server = true

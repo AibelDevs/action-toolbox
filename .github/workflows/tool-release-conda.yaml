@@ -67,6 +67,7 @@ jobs:
       recipe_dir: ${{ steps.extract_conda_meta.outputs.recipe_dir }}
       quetz_channel: ${{ steps.extract_conda_meta.outputs.quetz_channel }}
       publish_runner: ${{ steps.extract_conda_meta.outputs.publish_runner }}
+      artifacts_retention_days: ${{ steps.extract_conda_meta.outputs.artifacts_retention_days }}
     steps:
       - name: Extract recipe_dir
         id: extract_conda_meta
@@ -88,6 +89,7 @@ jobs:
           set_output('recipe_dir', toml_data["tool"]["python"]['conda']['recipe_dir'])
           set_output('quetz_channel', toml_data["tool"]["python"]['conda'].get('quetz_channel', None))
           set_output('publish_runner', toml_data["tool"]["python"]['conda'].get('publish_runner', 'ubuntu-latest'))
+          set_output('artifacts_retention_days', toml_data["tool"]["python"]['conda'].get('artifacts_retention_days', '2'))
 
 
   create_variant_matrix:
@@ -337,7 +339,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-${{ matrix.builds.os }}-${{ matrix.builds.python }}-${{matrix.builds.key}}-${{matrix.builds.value}}
-          retention-days: 2
+          retention-days: ${{ needs.extract_conda_meta.outputs.artifacts_retention_days }}
           path: |
             ${{ env.ARTIFACTS_DIR }}
 
