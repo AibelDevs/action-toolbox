@@ -1,4 +1,5 @@
 name: Workflow on Self-Hosted Runner
+# this must be copied to the callers (user) repository workflows directory
 
 on:
   repository_dispatch:

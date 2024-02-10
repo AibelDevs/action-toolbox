@@ -172,7 +172,7 @@ jobs:
               if len(variants) == 0:
                   var_dict = {"empty": "empty"}
                   variants.append(var_dict)
-              
+          
               itertools_product = itertools.product(python.split(","), os_variants.split(","), variants)
               for python_version, platform, var_dict in itertools_product:
                   build_args = f"--python {python_version}"
@@ -183,10 +183,10 @@ jobs:
                       header_name = f"{os_short}-{python_version}-{key}={val}"
                   else:
                       header_name = f"{os_short}-{python_version}"
-                  
+          
                   if add_build_str != "":
                       build_args += add_build_str
-                  
+          
                   run_object = {
                       "os": platform,
                       "os_short": os_short,
@@ -359,9 +359,8 @@ jobs:
               event_type: 'start-workflow-on-self-hosted',
               client_payload: {
                 artifact_pattern: 'conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-*',
-                runner_label: '${{ needs.extract_conda_meta.outputs.publish_runner }}',
-                // You can also include a unique identifier or path
-                unique_id: 'unique_identifier_here'
+                runner_label: 'self-hosted',
+                run_id: '${{ github.run_id }}',
               }
             });
           github-token: ${{ secrets.GITHUB_TOKEN }}
