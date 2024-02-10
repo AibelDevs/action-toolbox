@@ -343,13 +343,16 @@ jobs:
           path: |
             ${{ env.ARTIFACTS_DIR }}
 
+  # Note that the receiving workflow (ie yaml file containing the dispatch triggered job) needs to located in the
+  # users directory. Ie. you need to copy the example
   trigger_self_hosted:
     name: Trigger self-hosted runner
     needs: [ conda_build, extract_conda_meta ]
-    if: always() && ${{ needs.extract_conda_meta.outputs.publish_runner }} != 'ubuntu-latest'
+    if: ${{ needs.extract_conda_meta.outputs.publish_runner }} != 'ubuntu-latest'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger self-hosted runner
+        if: ${{ inputs.push_conda == 'true' }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -361,18 +364,20 @@ jobs:
                 artifact_pattern: 'conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-*',
                 runner_label: 'self-hosted',
                 run_id: '${{ github.run_id }}',
+                use_quetz_server: '${{ inputs.use_quetz_server }}',
+                use_anaconda_server: '${{ inputs.use_anaconda_server }}',
               }
             });
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   release_conda:
     name: Release
-    if: always() && ${{ needs.extract_conda_meta.outputs.publish_runner }} == 'ubuntu-latest'
+    if: ${{ needs.extract_conda_meta.outputs.publish_runner }} == 'ubuntu-latest'
     needs: [ conda_build, extract_conda_meta ]
     defaults:
       run:
         shell: bash -l {0}
-    runs-on: ${{ needs.extract_conda_meta.outputs.publish_runner }}
+    runs-on: ubuntu-latest
     steps:
       - uses: mamba-org/setup-micromamba@v1 # https://github.com/mamba-org/setup-micromamba
         with:

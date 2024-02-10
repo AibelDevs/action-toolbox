@@ -5,31 +5,118 @@ on:
   repository_dispatch:
     types: [start-workflow-on-self-hosted]
 
+env:
+  ARTIFACTS_DIR: my-artifacts
+
 jobs:
   process:
     runs-on: ${{ github.event.client_payload.runner_label }}
-
     steps:
-    - uses: actions/checkout@v4
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ github.event.client_payload.artifact_pattern }}
+          run-id: ${{ github.event.client_payload.run_id }}
+          path: ${{ env.ARTIFACTS_DIR }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Check Payload
-      run: |
-        echo "Artifact Name: ${{ github.event.client_payload.artifact_pattern }}"
+      - name: List artifacts
+        shell: python
+        run: |
+          import pathlib
+          
+          for path in pathlib.Path("my-artifacts").rglob("*.conda"):
+              print(path)
+          
+          for path in pathlib.Path("my-artifacts").rglob("*.tar.bz2"):
+              print(path)
 
-    # Example conditional step based on payload
-    - name: Download Artifacts
-      uses: actions/download-artifact@v4
-      with:
-        pattern: ${{ github.event.client_payload.artifact_pattern }}
-        path: my-artifacts
+      - uses: mamba-org/setup-micromamba@v1 # https://github.com/mamba-org/setup-micromamba
+        with:
+          environment-name: publish-env
+          cache-environment: true
+          create-args: >-
+            python=3.11
+            toml=0.10.2
+            anaconda-client=1.12.1
+            quetz-client=0.5.0
 
-    - name: List artifacts
-      shell: python
-      run: |
-        import pathlib
+      - name: Upload packages to Quetz Server
+        if: ${{ github.event.client_payload.use_quetz_server == 'true' }}
+        env:
+          QUETZ_URL: ${{ secrets.QUETZ_URL }}
+          QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
+        run: |
+          python - <<EOF
 
-        for path in pathlib.Path("my-artifacts").rglob("*.conda"):
-            print(path)
+          import pathlib
+          import os
+          import requests
+          from quetz_client import QuetzClient
 
-        for path in pathlib.Path("my-artifacts").rglob("*.tar.bz2"):
-            print(path)
+          quetz_channel = "${{ needs.extract_conda_meta.outputs.quetz_channel }}"
+
+          client = QuetzClient.from_token(os.getenv('QUETZ_URL'), os.getenv('QUETZ_API_KEY'))
+
+          for conda_file in pathlib.Path(os.getenv('ARTIFACTS_DIR')).rglob('*.conda'):
+            print(f"Uploading {conda_file} to channel {quetz_channel}")
+            try:
+              client.post_file_to_channel(quetz_channel, conda_file, False)
+            except requests.exceptions.HTTPError as e:
+              print(e)
+              # if 409 error, then package already exists
+              if e.response.status_code == 409:
+                print(f"Likely due to package {conda_file} already exists in channel ${{ matrix.channel }}")
+              else:
+                raise e
+          EOF
+
+      - name: upload for Anaconda
+        if: ${{ github.event.client_payload.use_anaconda_server == 'true' }}
+        env:
+          ANACONDA_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
+        run: |
+          python - <<EOF
+
+          import os
+          import pathlib
+          import argparse
+          from binstar_client.commands.upload import Uploader
+
+          artifacts_dir = pathlib.Path(os.getenv('ARTIFACTS_DIR')).resolve().absolute()
+          user = '${{ needs.create_variant_matrix.outputs.conda_owner }}'
+          label = '${{ needs.create_variant_matrix.outputs.conda_label }}'
+
+          arguments = argparse.Namespace(
+              token=os.getenv("ANACONDA_TOKEN"),
+              user=user,
+              label=label,
+              labels=[label],
+              site=None,
+              package_type=None,
+              package=None,
+              version=None,
+              build_id=None,
+              summary=None,
+              description=None,
+              auto_register=True,
+              private=False,
+              mode="force",
+              keep_basename=False,
+              force_metadata_update=True,
+          )
+          uploader: Uploader = Uploader(arguments=arguments)
+          uploader.api.check_server()
+          _ = uploader.username
+
+          try:
+              filename: str
+              for filename in artifacts_dir.rglob("*.tar.bz2"):
+                  uploader.upload(str(filename))
+              for filename in artifacts_dir.rglob("*.conda"):
+                  uploader.upload(str(filename))
+          finally:
+              uploader.print_uploads()
+              uploader.cleanup()
+
+          EOF
