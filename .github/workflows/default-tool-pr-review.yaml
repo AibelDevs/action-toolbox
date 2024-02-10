@@ -2,6 +2,11 @@ name: Default Review Pull Request
 
 on:
   workflow_call:
+    inputs:
+      extra_review_str:
+        description: "Extra review string (base64 encoded)"
+        type: string
+        required: false
     outputs:
       review_ok:
         description: "Is the PR ok"
@@ -110,14 +115,17 @@ jobs:
           import os
           import base64
           
+          
           def set_output(name, value, encode_it=False):
-            if encode_it:
-              value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
-            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-                print(f'{name}={value}', file=fh)
+              if encode_it:
+                  value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                  print(f'{name}={value}', file=fh)
+          
           
           def deserialize_str(s):
-            return base64.b64decode(s).decode('utf-8')
+              return base64.b64decode(s).decode('utf-8')
+          
           
           all_checks = []
           review_str = ''
@@ -128,32 +136,34 @@ jobs:
           
           # Python
           if "${{ needs.load-config.outputs.python_enabled }}" == "true":
-            review_str += deserialize_str('${{ needs.python-review.outputs.python_review_str }}')
-            all_checks.append('${{ needs.python-review.outputs.python_review_ok }}' == 'true')
+              review_str += deserialize_str('${{ needs.python-review.outputs.python_review_str }}')
+              all_checks.append('${{ needs.python-review.outputs.python_review_ok }}' == 'true')
           
           # Docker
           if "${{ needs.load-config.outputs.docker_enabled }}" == "true":
-            review_str += deserialize_str('${{ needs.docker-review.outputs.docker_review_str }}')
-            all_checks.append('${{ needs.docker-review.outputs.docker_review_ok }}' == 'true')
+              review_str += deserialize_str('${{ needs.docker-review.outputs.docker_review_str }}')
+              all_checks.append('${{ needs.docker-review.outputs.docker_review_ok }}' == 'true')
           
           # GitOps
           if "${{ needs.load-config.outputs.gitops_enabled }}" == "true":
-            review_str += deserialize_str('${{ needs.gitops-review.outputs.gitops_review_str }}')
-            all_checks.append('${{ needs.gitops-review.outputs.gitops_review_ok }}' == 'true')
+              review_str += deserialize_str('${{ needs.gitops-review.outputs.gitops_review_str }}')
+              all_checks.append('${{ needs.gitops-review.outputs.gitops_review_ok }}' == 'true')
           
           # check if all_checks are true
           if all(all_checks):
-            header = "👋 Hi there! I have checked your PR and found no issues. Thanks for your contribution!\n"
-            set_output('review_ok', 'true')
+              header = "👋 Hi there! I have checked your PR and found no issues. Thanks for your contribution!\n"
+              set_output('review_ok', 'true')
           else:
-            header = "👋 Hi there! I have checked your PR and found the following:\n\n"
-            set_output('review_ok', 'false')
+              header = "👋 Hi there! I have checked your PR and found the following:\n\n"
+              set_output('review_ok', 'false')
+          
+          if "${{ inputs.extra_review_str }}":
+              review_str += deserialize_str('${{ inputs.extra_review_str }}')
           
           body = header + review_str
           
           # Set the output
           set_output('body', body, True)
-          
           print(body)
 
       - name: Check if label "silence-bot" is added
