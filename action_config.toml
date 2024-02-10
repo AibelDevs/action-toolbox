@@ -73,6 +73,7 @@ platforms = "ubuntu-latest,windows-latest"
 python_versions = "3.11,3.12"
 publish_runner = "ubuntu-latest"
 artifacts_retention_days = 2
+dispatch_release_workflow="conda-release-workflow-on-self-hosted"
 
 # Anaconda Related
 use_anaconda_server = true
