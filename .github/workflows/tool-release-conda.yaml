@@ -68,6 +68,7 @@ jobs:
       quetz_channel: ${{ steps.extract_conda_meta.outputs.quetz_channel }}
       publish_runner: ${{ steps.extract_conda_meta.outputs.publish_runner }}
       artifacts_retention_days: ${{ steps.extract_conda_meta.outputs.artifacts_retention_days }}
+      dispatch_release_workflow: ${{ steps.extract_conda_meta.outputs.dispatch_release_workflow }}
     steps:
       - name: Extract recipe_dir
         id: extract_conda_meta
@@ -90,7 +91,7 @@ jobs:
           set_output('quetz_channel', toml_data["tool"]["python"]['conda'].get('quetz_channel', None))
           set_output('publish_runner', toml_data["tool"]["python"]['conda'].get('publish_runner', 'ubuntu-latest'))
           set_output('artifacts_retention_days', toml_data["tool"]["python"]['conda'].get('artifacts_retention_days', '2'))
-          set_output('artifacts_retention_days', toml_data["tool"]["python"]['conda'].get('dispatch_release_workflow', 'conda-release-workflow-on-self-hosted'))
+          set_output('dispatch_release_workflow', toml_data["tool"]["python"]['conda'].get('dispatch_release_workflow', 'conda-release-workflow-on-self-hosted'))
           
 
 
@@ -361,7 +362,7 @@ jobs:
             github.rest.repos.createDispatchEvent({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              event_type: 'start-workflow-on-self-hosted',
+              event_type: '${{ needs.extract_conda_meta.outputs.dispatch_release_workflow }}',
               client_payload: {
                 artifact_pattern: 'conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-*',
                 runner_label: 'self-hosted',
