@@ -59,6 +59,7 @@ env:
   ARTIFACTS_DIR: /home/runner/work/artifacts
   CROOT_DIR: /home/runner/work/build
   BUILD_ARGS: ""
+  ARTIFACTS_PREFIX: conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}
 
 jobs:
   extract_conda_meta:
@@ -341,7 +342,7 @@ jobs:
         working-directory: ${{ needs.extract_conda_meta.outputs.recipe_dir }}
       - uses: actions/upload-artifact@v4
         with:
-          name: conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-${{ matrix.builds.os }}-${{ matrix.builds.python }}-${{matrix.builds.key}}-${{matrix.builds.value}}
+          name: ${{ env.ARTIFACTS_PREFIX }}-${{ matrix.builds.os }}-${{ matrix.builds.python }}-${{matrix.builds.key}}-${{matrix.builds.value}}
           retention-days: ${{ needs.extract_conda_meta.outputs.artifacts_retention_days }}
           path: |
             ${{ env.ARTIFACTS_DIR }}
@@ -351,11 +352,10 @@ jobs:
   trigger_self_hosted:
     name: Trigger self-hosted runner
     needs: [ conda_build, extract_conda_meta ]
-    if: ${{ needs.extract_conda_meta.outputs.publish_runner != 'ubuntu-latest' }}
+    if: ${{ needs.extract_conda_meta.outputs.publish_runner != 'ubuntu-latest' && inputs.push_conda == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Trigger self-hosted runner
-        if: ${{ inputs.push_conda == 'true' }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -364,7 +364,7 @@ jobs:
               repo: context.repo.repo,
               event_type: '${{ needs.extract_conda_meta.outputs.dispatch_release_workflow }}',
               client_payload: {
-                artifact_pattern: 'conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-*',
+                artifact_pattern: '${{ env.ARTIFACTS_PREFIX }}*',
                 runner_label: 'self-hosted',
                 run_id: '${{ github.run_id }}',
                 use_quetz_server: '${{ inputs.use_quetz_server }}',
@@ -376,7 +376,7 @@ jobs:
 
   release_conda:
     name: Release
-    if: ${{ needs.extract_conda_meta.outputs.publish_runner == 'ubuntu-latest' }}
+    if: ${{ needs.extract_conda_meta.outputs.publish_runner == 'ubuntu-latest' && inputs.push_conda == 'true' }}
     needs: [ conda_build, extract_conda_meta ]
     defaults:
       run:
@@ -395,8 +395,9 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          pattern: conda-${{ format('{0}{1}', github.run_id, github.run_attempts) }}-*
+          pattern: ${{ env.ARTIFACTS_PREFIX }}-*
           path: my-artifacts
+
       - name: List artifacts
         shell: python
         run: |
@@ -409,7 +410,7 @@ jobs:
               print(path)
 
       - name: Upload packages to Quetz Server
-        if: ${{ inputs.use_quetz_server == 'true' && inputs.push_conda == 'true' }}
+        if: ${{ inputs.use_quetz_server == 'true' }}
         env:
           QUETZ_URL: ${{ secrets.QUETZ_URL }}
           QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
@@ -440,7 +441,7 @@ jobs:
           EOF
 
       - name: upload for Anaconda
-        if: ${{ inputs.use_anaconda_server == 'true' && inputs.push_conda == 'true' }}
+        if: ${{ inputs.use_anaconda_server == 'true' }}
         env:
           ANACONDA_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
           ARTIFACTS_DIR: my-artifacts
