@@ -1,0 +1,34 @@
+name: Workflow on Self-Hosted Runner
+
+on:
+  repository_dispatch:
+    types: [start-workflow-on-self-hosted]
+
+jobs:
+  process:
+    runs-on: ${{ github.event.client_payload.runner_label }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check Payload
+      run: |
+        echo "Artifact Name: ${{ github.event.client_payload.artifact_pattern }}"
+
+    # Example conditional step based on payload
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: ${{ github.event.client_payload.artifact_pattern }}
+        path: my-artifacts
+
+    - name: List artifacts
+      shell: python
+      run: |
+        import pathlib
+
+        for path in pathlib.Path("my-artifacts").rglob("*.conda"):
+            print(path)
+
+        for path in pathlib.Path("my-artifacts").rglob("*.tar.bz2"):
+            print(path)
