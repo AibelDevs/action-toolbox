@@ -172,6 +172,7 @@ jobs:
     with:
       docker_tag_override: ${{ needs.bump_version.outputs.current_version }}
       docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
       push_docker: "true"
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
