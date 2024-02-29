@@ -119,30 +119,30 @@ jobs:
                 with open(os.environ['GITHUB_ENV'], 'a') as fh:
                     print(f'{name}={value}', file=fh)
             
-            pyproject_tomls = list(pathlib.Path('').rglob('pyproject.toml'))
+            csharp_tomls = list(pathlib.Path('').rglob('csharp-release.toml'))
             package_jsons = list(pathlib.Path('').rglob('package.json'))
             version_override = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
             print(f"{version_override=}")
             
             # Check if csharp-release.toml.toml exists
-            if len(pyproject_tomls) > 0:
-                print("Found pyproject.toml")
-                pyproject_toml = pyproject_tomls[0]
-                print(f"{pyproject_toml=}")
+            if len(csharp_tomls) > 0:
+                print("Found csharp-release.toml")
+                csharp_toml = csharp_tomls[0]
+                print(f"{csharp_toml=}")
                 
-                # Read pyproject.toml
-                with open(pyproject_toml, 'r') as file:
+                # Read csharp-release.toml
+                with open(csharp_toml, 'r') as file:
                     toml_data = toml.load(file)
                 
-                # Update pyproject.toml
+                # Update csharp-release.toml
               
                 # replace next. with next to comply with PEP440
-                py_version_override = version_override.replace('-next.', 'dev')
-                print(f"{py_version_override=}")
-                toml_data['project']['version'] = py_version_override
+                cs_version_override = version_override.replace('-next.', 'dev')
+                print(f"{cs_version_override=}")
+                toml_data['project']['version'] = cs_version_override
                 
-                # Write pyproject.toml
-                with open(pyproject_toml, 'w') as file:
+                # Write csharp-release.toml
+                with open(csharp_toml, 'w') as file:
                     toml.dump(toml_data, file)
                 print(toml_data)
             

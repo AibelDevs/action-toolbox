@@ -136,7 +136,7 @@ extensions = []
 autoescape = true
 
 [tool.semantic_release.commit_author]
-env = "GIT_COMMIT_AUTHOR"
+env = "GIT_COMMITTER_NAME"
 default = "semantic-release <semantic-release>"
 
 [tool.semantic_release.commit_parser_options]
