@@ -180,7 +180,7 @@ jobs:
 
       - name: Upload Build Log
         if: inputs.create_build_logs == 'true' && env.DOCKER_DISABLED != 'true'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         continue-on-error: true # Needed to continue in the event the build fails and no build log is found
         with:
           name: build-log-${{ github.run_id }}
@@ -213,7 +213,7 @@ jobs:
       build_log_summary: ${{ steps.summarize_build_logs.outputs.build_log_summary }}
     steps:
       - name: Download Build Log Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-log-${{ github.run_id }}
           path: ${{ env.BUILD_LOG_DIR }}
