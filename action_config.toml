@@ -46,6 +46,10 @@ pre_release_tag = "dev"
 # Will change semver pre-release tags to a non-descript "dev" release tag comply with PEP440
 # See https://packaging.python.org/en/latest/specifications/version-specifiers/#public-version-identifiers
 # for more information
+[tool.python.lint]
+black_version = "24.1.1"
+ruff_version = "0.2.1"
+isort_version = "5.13.3"
 
 [tool.python.pip]
 enabled = false
