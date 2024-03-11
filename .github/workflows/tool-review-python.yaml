@@ -69,9 +69,9 @@ jobs:
           
           toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
           lint_versions = toml_data.get('tool', {}).get('python', {}).get('lint', {})
-          black_version = lint_versions.get('black', {}).get('version', '23.10.0')
-          isort_version = lint_versions.get('isort', {}).get('version', '5.12.0')
-          ruff_version = lint_versions.get('ruff', {}).get('version', '0.1.0')
+          black_version = lint_versions.get('black_version', '23.10.0')
+          isort_version = lint_versions.get('isort_version', '5.12.0')
+          ruff_version = lint_versions.get('ruff_version', '0.1.0')
           
           set_env('BLACK_VERSION', black_version)
           set_env('ISORT_VERSION', isort_version)
