@@ -40,51 +40,12 @@ jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
 
-  lint_versions:
-    name: Set Python Version
-    needs: load-config
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ inputs.python_version }}
-
-      - name: set env vars
-        shell: python
-        run: |
-          import os
-          import json
-          import base64
-          
-          
-          def set_env(name, value):
-              with open(os.environ['GITHUB_ENV'], 'a') as fh:
-                  print(f'{name}={value}', file=fh)
-          
-          
-          def deserialize_str(s):
-              return base64.b64decode(s).decode('utf-8')
-          
-          
-          toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
-          lint_versions = toml_data.get('tool', {}).get('python', {}).get('lint', {})
-          black_version = lint_versions.get('black_version', '23.10.0')
-          isort_version = lint_versions.get('isort_version', '5.12.0')
-          ruff_version = lint_versions.get('ruff_version', '0.1.0')
-          
-          set_env('BLACK_VERSION', black_version)
-          set_env('ISORT_VERSION', isort_version)
-          set_env('RUFF_VERSION', ruff_version)
-
   py-linting-review:
-    needs: [ load-config, lint_versions ]
+    needs: load-config
     uses: ./.github/workflows/tool-review-python-lint.yaml
     with:
       python_version: ${{ inputs.python_version }}
-      black_version: ${{ env.BLACK_VERSION }}
-      isort_version: ${{ env.ISORT_VERSION }}
-      ruff_version: ${{ env.RUFF_VERSION }}
+      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
 
   py-packaging-review:
     needs: load-config

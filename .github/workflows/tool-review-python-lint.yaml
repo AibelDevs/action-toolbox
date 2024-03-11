@@ -8,21 +8,11 @@ on:
         type: string
         required: false
         default: '3.11'
-      isort_version:
-        description: 'Isort version'
+      config_toml_data:
+        description: "Toml config file for actions base64 encoded"
         type: string
         required: false
-        default: '5.12.0'
-      black_version:
-        description: 'Black version'
-        type: string
-        required: false
-        default: '23.10.0'
-      ruff_version:
-        description: 'Ruff version'
-        type: string
-        required: false
-        default: '0.1.0'
+        default: ""
     outputs:
       pylint_review_ok:
         description: 'Is the PR ok'
@@ -30,6 +20,7 @@ on:
       pylint_review_str:
         description: 'Body of the comment'
         value: ${{ jobs.lintCheck.outputs.pylint_review_str }}
+
 
 jobs:
   lintCheck:
@@ -49,10 +40,36 @@ jobs:
         with:
           python-version: ${{ inputs.python_version }}
 
+      - name: set lint tool versions
+        shell: python
+        run: |
+          import os
+          import json
+          import base64
+
+
+          def set_env(name, value):
+              with open(os.environ['GITHUB_ENV'], 'a') as fh:
+                  print(f'{name}={value}', file=fh)
+
+
+          def deserialize_str(s):
+              return base64.b64decode(s).decode('utf-8')
+
+          toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
+          lint_versions = toml_data.get('tool', {}).get('python', {}).get('lint', {})
+          black_version = lint_versions.get('black_version', '23.10.0')
+          isort_version = lint_versions.get('isort_version', '5.12.0')
+          ruff_version = lint_versions.get('ruff_version', '0.1.0')
+
+          set_env('BLACK_VERSION', black_version)
+          set_env('ISORT_VERSION', isort_version)
+          set_env('RUFF_VERSION', ruff_version)
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install isort==${{ inputs.isort_version }} black==${{ inputs.black_version }} ruff==${{ inputs.ruff_version }}
+          pip install isort==${{ env.isort_version }} black==${{ env.black_version }} ruff==${{ env.ruff_version }}
 
       - name: Isort Check
         id: isort
@@ -96,7 +113,7 @@ jobs:
           
           def deserialize_str(s):
             return base64.b64decode(s).decode('utf-8')
-                    
+          
           # Python lint results         
           isort_result = '${{ steps.isort.outputs.isort_result }}' == 'true'
           black_result = '${{ steps.black.outputs.black_result }}' == 'true'
