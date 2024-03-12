@@ -94,8 +94,6 @@ jobs:
           set_output('artifacts_retention_days', toml_data["tool"]["python"]['conda'].get('artifacts_retention_days', '2'))
           set_output('dispatch_release_workflow', toml_data["tool"]["python"]['conda'].get('dispatch_release_workflow', 'conda-release-workflow-on-self-hosted'))
           
-
-
   create_variant_matrix:
     needs: extract_conda_meta
     name: Create variant matrix
@@ -208,8 +206,10 @@ jobs:
           
           toml_data = json.loads(deserialize_str(b"${{ inputs.config_toml_data }}"))
           conda_config = toml_data["tool"]["python"]['conda']
+          
           conda_owner = conda_config.get('owner', 'unset')
           set_output('conda_owner', conda_owner)
+          
           conda_label = conda_config.get('label', 'main')
           set_output('conda_label', conda_label)
           
@@ -378,7 +378,7 @@ jobs:
   release_conda:
     name: Release
     if: ${{ needs.extract_conda_meta.outputs.publish_runner == 'ubuntu-latest' && inputs.push_conda == 'true' }}
-    needs: [ conda_build, extract_conda_meta ]
+    needs: [ conda_build, extract_conda_meta, create_variant_matrix ]
     defaults:
       run:
         shell: bash -l {0}
