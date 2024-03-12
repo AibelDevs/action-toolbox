@@ -186,10 +186,13 @@ jobs:
           name: build-log-${{ github.run_id }}
           path: build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
           overwrite: true
-        
+
+      - name: Scan docker image with Copa
+        uses: ./.github/workflows/copa_scan.yaml
+        id: check_copa_status
 
       - name: Source - login to ACR
-        if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
+        if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true' && steps.check_copa_status.outcome == 'success'
         uses: docker/login-action@v3.0.0
         with:
           registry: ${{ secrets.CONTAINER_REGISTRY_URL }}
@@ -197,12 +200,12 @@ jobs:
           password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
       - name: Push docker image with ${{ inputs.docker_tag_override }} tag
-        if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
+        if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true' && steps.check_copa_status.outcome == 'success'
         run: |
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:${{ inputs.docker_tag_override }}
 
       - name: Push docker image with latest tag
-        if: matrix.docker.use_latest == true && inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
+        if: matrix.docker.use_latest == true && inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true' && steps.check_copa_status.outcome == 'success'
         run: |
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
 
