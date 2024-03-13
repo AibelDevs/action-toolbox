@@ -209,7 +209,7 @@ jobs:
           tar -xzf copa_${COPA_VERSION}_linux_amd64.tar.gz
           chmod +x copa
           docker buildx create --use --name builder
-          ./copa patch -i ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }} -r report.json -t latest
+          ./copa patch -i ${{ matrix.docker.image_name }} -r report.json -t latest
           echo "copa_patch=true" >> $GITHUB_OUTPUT
         env:
           COPA_VERSION: 0.6.0
@@ -230,7 +230,7 @@ jobs:
       - name: Push docker image with latest tag
         if: matrix.docker.use_latest == true && inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true' && steps.check_copa_status.outcome == 'success'
         run: |
-          docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:lates
+          docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
           
 
       
