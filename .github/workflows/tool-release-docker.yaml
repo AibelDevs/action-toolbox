@@ -193,6 +193,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout git
+        if: env.DOCKER_DISABLED != 'true'
+        uses: actions/checkout@v4
+    
       - name: Scan docker image with tag override using Copa
         if: ( matrix.docker.use_latest == true || inputs.create_build_logs == 'true') && env.DOCKER_DISABLED != 'true'
         uses: ./.github/workflows/copa_scan.yaml
