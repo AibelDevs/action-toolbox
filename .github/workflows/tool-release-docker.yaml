@@ -190,7 +190,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.image_name }}:latest
+          image-ref: ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
           format: 'json'
           output: 'report.json'
           #exit-code: '1'
