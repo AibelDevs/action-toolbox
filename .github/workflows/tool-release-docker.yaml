@@ -190,13 +190,16 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ matrix.docker.image_name }}:latest
+          image-ref: ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.image_name }}:latest
           format: 'json'
           output: 'report.json'
           #exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+        env:
+            TRIVY_USERNAME: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+            TRIVY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }} 
 
       - name: Source - login to ACR
         if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true' && steps.check_copa_status.outcome == 'success'
