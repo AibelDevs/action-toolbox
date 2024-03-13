@@ -187,6 +187,12 @@ jobs:
           path: build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
           overwrite: true
 
+  copa_scan:
+    if: inputs.create_build_logs == 'true'
+    needs: build_docker
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Scan docker image with tag override using Copa
         if: ( matrix.docker.use_latest == true || inputs.create_build_logs == 'true') && env.DOCKER_DISABLED != 'true'
         uses: ./.github/workflows/copa_scan.yaml
