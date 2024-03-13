@@ -188,7 +188,7 @@ jobs:
           overwrite: true
 
       - name: Scan docker image with tag override using Copa
-        if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true' 
+        if: env.DOCKER_DISABLED != 'true' 
         uses: ./.github/workflows/copa_scan.yaml
         id: check_copa_status
         with:
