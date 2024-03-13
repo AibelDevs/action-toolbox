@@ -30,6 +30,10 @@ jobs:
             # provide relevant list of images to scan on each run
             images: ['${{ inputs.image-name }}']          
     steps:
+      
+      - name: Checkout
+        uses: actions/checkout@v4
+      
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
