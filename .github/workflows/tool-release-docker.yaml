@@ -187,33 +187,7 @@ jobs:
           path: build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
           overwrite: true
      
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
-          format: 'json'
-          output: 'report.json'
-          #exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
-        env:
-            TRIVY_USERNAME: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-            TRIVY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }} 
-
-      - name: copa patch
-        #if: steps.vuln_count.outputs.vuln_count > 0
-        id: copa_patch
-        run: |
-          wget https://github.com/project-copacetic/copacetic/releases/download/v${COPA_VERSION}/copa_${COPA_VERSION}_linux_amd64.tar.gz
-          tar -xzf copa_${COPA_VERSION}_linux_amd64.tar.gz
-          chmod +x copa
-          docker buildx create --use --name builder
-          ./copa patch -i app/${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest -r report.json -t latest
-          echo "copa_patch=true" >> $GITHUB_OUTPUT
-        env:
-          COPA_VERSION: 0.6.0
-
+      
       - name: Source - login to ACR
         if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true' && steps.check_copa_status.outcome == 'success'
         uses: docker/login-action@v3.0.0
