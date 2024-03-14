@@ -209,7 +209,7 @@ jobs:
           tar -xzf copa_${COPA_VERSION}_linux_amd64.tar.gz
           chmod +x copa
           docker buildx create --use --name builder
-          ./copa patch -i app/${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest -r report.json -t latest
+          ./copa patch -i ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest -r report.json -t latest
           echo "copa_patch=true" >> $GITHUB_OUTPUT
         env:
           COPA_VERSION: 0.6.0
