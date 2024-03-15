@@ -31,6 +31,11 @@ on:
       CUSTOM_PYPI_URL:
         required: false
 
+env:
+  BLACK_VERSION: '23.10.0'
+  ISORT_VERSION: '5.12.0'
+  RUFF_VERSION: '0.1.0'
+
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
@@ -40,6 +45,7 @@ jobs:
     uses: ./.github/workflows/tool-review-python-lint.yaml
     with:
       python_version: ${{ inputs.python_version }}
+      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
 
   py-packaging-review:
     needs: load-config
@@ -73,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}
 
