@@ -158,10 +158,10 @@ jobs:
 
       - name: Upload Build Log
         if: inputs.create_run_logs == 'true' && env.GITOPS_DISABLED != 'true'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         continue-on-error: true # Needed to continue in the event the build fails and no build log is found
         with:
-          name: build-log-${{ github.run_id }}
+          name: build-log-${{ github.run_id }}-${{ matrix.gitops.docker_ref }}
           path: build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.docker_ref }}.txt
 
   summarize_build_logs:
@@ -174,9 +174,10 @@ jobs:
       build_log_ok: ${{ steps.summarize_build_logs.outputs.build_log_ok }}
     steps:
       - name: Download Build Log Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: build-log-${{ github.run_id }}
+          pattern: build-log-${{ github.run_id }}-*  # Download the build log artifact
+          merge-multiple: true
           path: ${{ env.BUILD_LOG_DIR }}
 
       - name: Review Build Logs and
