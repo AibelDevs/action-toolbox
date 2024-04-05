@@ -161,7 +161,6 @@ jobs:
         uses: actions/upload-artifact@v4
         continue-on-error: true # Needed to continue in the event the build fails and no build log is found
         with:
-          retention-days: 2
           name: build-log-gitops-${{ github.run_id }}-${{ matrix.gitops.docker_ref }}
           path: build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.docker_ref }}.txt
 
