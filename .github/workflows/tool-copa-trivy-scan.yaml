@@ -1,0 +1,86 @@
+name: Copa build
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        description: 'Docker Image Name'
+        type: string
+        required: false
+        default: '3.11'
+      docker_matrix:
+        description: 'Docker matrix'
+        type: string
+        required: false
+        default: ''
+    secrets:
+      CONTAINER_REGISTRY_URL:
+        required: false
+      CONTAINER_REGISTRY_USERNAME:
+        required: false
+      CONTAINER_REGISTRY_PASSWORD:
+        required: false
+        
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    strategy:
+          fail-fast: false
+          matrix:
+            # provide relevant list of images to scan on each run
+            images: ['${{ secrets.CONTAINER_REGISTRY_URL }}/${{ inputs.image_name }}']          
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ matrix.images }}
+          format: 'json'
+          output: 'report.json'
+          #exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+        env:
+            TRIVY_USERNAME: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+            TRIVY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }} 
+      
+      - name: docker ACR login
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.CONTAINER_REGISTRY_URL }}
+          username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+          password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+        
+      - name: copa patch
+        #if: steps.vuln_count.outputs.vuln_count > 0
+        id: copa_patch
+        run: |
+          wget https://github.com/project-copacetic/copacetic/releases/download/v${COPA_VERSION}/copa_${COPA_VERSION}_linux_amd64.tar.gz
+          tar -xzf copa_${COPA_VERSION}_linux_amd64.tar.gz
+          chmod +x copa
+
+          docker buildx create --use --name builder
+          ./copa patch -i ${{ matrix.images }} -r report.json -t 4.1.2
+          echo "copa_patch=true" >> $GITHUB_OUTPUT
+        env:
+          COPA_VERSION: 0.6.0
+          
+        
+      - name: Push patched image
+        if: steps.copa_patch.outputs.copa_patch == 'true'
+        run: |
+          docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ inputs.image_name }}
+
+      - name: Test Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.CONTAINER_REGISTRY_URL }}/${{ inputs.image_name }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+        env:
+          TRIVY_USERNAME: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+          TRIVY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }} 
