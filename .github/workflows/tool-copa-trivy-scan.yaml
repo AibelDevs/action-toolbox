@@ -3,7 +3,7 @@ name: Copa build
 on:
   workflow_call:
     inputs:
-      image_name:
+      gitops_image_path:
         description: 'Docker Image Name'
         type: string
         required: false
@@ -29,7 +29,7 @@ jobs:
           fail-fast: false
           matrix:
             # provide relevant list of images to scan on each run
-            images: ['${{ secrets.CONTAINER_REGISTRY_URL }}/${{ inputs.image_name }}']          
+            images: ['${{ inputs.gitops_image_path }}']          
     steps:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -61,7 +61,7 @@ jobs:
           chmod +x copa
 
           docker buildx create --use --name builder
-          ./copa patch -i ${{ matrix.images }} -r report.json -t 4.1.2
+          ./copa patch -i ${{ matrix.images }} -r report.json -t patched-$current_time
           echo "copa_patch=true" >> $GITHUB_OUTPUT
         env:
           COPA_VERSION: 0.6.0
