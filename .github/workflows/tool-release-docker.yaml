@@ -33,6 +33,11 @@ on:
         type: string
         required: false
         default: ''
+      config_toml_data:
+        description: "Toml config file for actions base64 encoded"
+        type: string
+        required: false
+        default: ""
     outputs:
       build_logs_str:
         description: 'Build logs'
@@ -70,7 +75,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         if: env.DOCKER_DISABLED != 'true'
         with:
           python-version: ${{ inputs.python_version }}
@@ -115,10 +120,6 @@ jobs:
             import toml
             import json
             
-            def set_env(name, value):
-                with open(os.environ['GITHUB_ENV'], 'a') as fh:
-                    print(f'{name}={value}', file=fh)
-            
             pyproject_tomls = list(pathlib.Path('').rglob('pyproject.toml'))
             package_jsons = list(pathlib.Path('').rglob('package.json'))
             version_override = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
@@ -127,41 +128,41 @@ jobs:
             # Check if pyproject.toml exists
             if len(pyproject_tomls) > 0:
                 print("Found pyproject.toml")
-                pyproject_toml = pyproject_tomls[0]
-                print(f"{pyproject_toml=}")
+                for pyproject_toml in pyproject_tomls:
+                  print(f"Updating {pyproject_toml=}")
+                  
+                  # Read pyproject.toml
+                  with open(pyproject_toml, 'r') as file:
+                      toml_data = toml.load(file)
+                  
+                  # Update pyproject.toml
                 
-                # Read pyproject.toml
-                with open(pyproject_toml, 'r') as file:
-                    toml_data = toml.load(file)
-                
-                # Update pyproject.toml
-              
-                # replace next. with next to comply with PEP440
-                py_version_override = version_override.replace('-next.', 'dev')
-                print(f"{py_version_override=}")
-                toml_data['project']['version'] = py_version_override
-                
-                # Write pyproject.toml
-                with open(pyproject_toml, 'w') as file:
-                    toml.dump(toml_data, file)
-                print(toml_data)
+                  # replace next. with next to comply with PEP440
+                  py_version_override = version_override.replace('-next.', 'dev')
+                  print(f"{py_version_override=}")
+                  toml_data['project']['version'] = py_version_override
+                  
+                  # Write pyproject.toml
+                  with open(pyproject_toml, 'w') as file:
+                      toml.dump(toml_data, file)
+                  print(toml_data)
             
             # Check if package.json exists
             if len(package_jsons) > 0:
                 print("Found package.json")
-                package_json = package_jsons[0]
-                print(f"{package_json=}")
-                
-                # Read package.json
-                with open(package_json, 'r') as file:
-                    json_data = json.load(file)
-                
-                # Update package.json
-                json_data['version'] = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
-                
-                # Write package.json
-                with open(package_json, 'w') as file:
-                    json.dump(json_data, file)
+                for package_json in package_jsons:
+                  print(f"Updating {package_json=}")
+                  
+                  # Read package.json
+                  with open(package_json, 'r') as file:
+                      json_data = json.load(file)
+                  
+                  # Update package.json
+                  json_data['version'] = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
+                  
+                  # Write package.json
+                  with open(package_json, 'w') as file:
+                      json.dump(json_data, file)
 
       - name: Build docker image with ${{ steps.set_release_tag.outputs.docker_tag }} tag
         if: inputs.create_build_logs == 'false' && env.DOCKER_DISABLED != 'true'
@@ -180,10 +181,10 @@ jobs:
 
       - name: Upload Build Log
         if: inputs.create_build_logs == 'true' && env.DOCKER_DISABLED != 'true'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         continue-on-error: true # Needed to continue in the event the build fails and no build log is found
         with:
-          name: build-log-${{ github.run_id }}
+          name: build-log-docker-${{ github.run_id }}-${{ matrix.docker.ref_name }}
           path: build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
 
       - name: Source - login to ACR
@@ -213,9 +214,10 @@ jobs:
       build_log_summary: ${{ steps.summarize_build_logs.outputs.build_log_summary }}
     steps:
       - name: Download Build Log Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: build-log-${{ github.run_id }}
+          pattern: build-log-docker-${{ github.run_id }}-*  # Download the build log artifact
+          merge-multiple: true
           path: ${{ env.BUILD_LOG_DIR }}
 
       - name: Review Build Logs and
