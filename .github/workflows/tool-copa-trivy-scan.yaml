@@ -216,7 +216,7 @@ jobs:
 
           yaml = ruamel.yaml.YAML()
           kind = "${{ inputs.gitops_kind }}"
-          gitops_file = "${{ steps.gitops_image.outputs.gitops_file }}
+          gitops_file = "${{ steps.gitops_image.outputs.gitops_file }}"
                   
           with open(gitops_file, "r") as f:
             yaml_blocks = list(yaml.load_all(f))
