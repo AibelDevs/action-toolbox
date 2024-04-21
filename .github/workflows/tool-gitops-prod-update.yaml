@@ -23,16 +23,16 @@ on:
         type: string
         required: false
         default: "false"
+      gitops_matrix:
+        description: 'GitOps Matrix'
+        type: string
+        required: false
+        default: ""
       docker_matrix:
-        description: "docker matrix"
+        description: 'Docker matrix'
         type: string
         required: false
-        default: ""
-      prod_matrix:
-        description: "gitops matrix"
-        type: string
-        required: false
-        default: ""
+        default: ''
     secrets:
       GITOPS_KEY:
         required: false
@@ -52,7 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 1
-      matrix: ${{ fromJson(inputs.prod_matrix) }}
+      matrix: ${{ fromJson(inputs.gitops_matrix) }}
 
     steps:
       - name: Check if matrix.docker.enabled is true
