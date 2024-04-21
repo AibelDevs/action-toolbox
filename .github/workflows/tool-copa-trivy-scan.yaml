@@ -185,7 +185,7 @@ jobs:
           echo "current_time=$current_time" >> $GITHUB_ENV
           ./copa patch -i ${{ steps.gitops_image.outputs.gitops_image }} -r report.json -t patched-$current_time
           echo "copa_patch=true" >> $GITHUB_OUTPUT
-          echo "patched_image_name=${{ secrets.CONTAINER_REGISTRY_URL }}/${{ steps.gitops_image.outputs.team_name }}/${{ steps.gitops_image.outputs.image_name }}:patched-$current_time" >> $GITHUB_ENV
+          echo "patched_image_name="${{ secrets.CONTAINER_REGISTRY_URL }}/${{ steps.gitops_image.outputs.team_name }}/${{ steps.gitops_image.outputs.image_name }}:patched-$current_time"" >> $GITHUB_ENV
         env:
           COPA_VERSION: 0.6.0
 
@@ -226,8 +226,7 @@ jobs:
               if block["kind"] != kind:
                   print(kind)
                   continue
-              block${{ matrix.gitops.image_path }} = "${{ env.patched_image_name }}"
-              print(${{ matrix.gitops.image_path }})
+              block${{ matrix.gitops.image_path }} = ${{ env.patched_image_name }}
 
           with open(gitops_file, "w") as f:
               yaml.dump_all(yaml_blocks, f)
