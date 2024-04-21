@@ -12,6 +12,11 @@ on:
         type: string
         required: false
         default: ""
+      config_toml_file:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
     secrets:
       CONTAINER_REGISTRY_URL:
         required: false
