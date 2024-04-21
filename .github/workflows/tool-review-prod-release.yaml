@@ -1,4 +1,4 @@
-name: tool-review-copa-trivy
+name: tool-review-prod-release
 on:
   workflow_call:
     inputs:
