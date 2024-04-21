@@ -30,7 +30,7 @@ jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
 
-  test_gitops:
+  test_copa:
     uses: ./.github/workflows/tool-copa-trivy-scan.yaml
     needs: load-config
     with:
