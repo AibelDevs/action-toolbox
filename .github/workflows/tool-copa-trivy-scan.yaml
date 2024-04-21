@@ -131,9 +131,20 @@ jobs:
           
           set_output('gitops_image', gitops_image)
 
+      - name: docker ACR login
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.CONTAINER_REGISTRY_URL }}
+          username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+          password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+
       - name: pring image value
         run: |
           echo ${{ steps.gitops_image.outputs.gitops_image }}
+
+      - name: pull docker image
+        run: |
+          docker image pull ${{ steps.gitops_image.outputs.gitops_image }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
