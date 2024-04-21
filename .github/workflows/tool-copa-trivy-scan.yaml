@@ -131,7 +131,10 @@ jobs:
           
           set_output('gitops_image', gitops_image)
 
-      
+      - name: pring image value
+        run: |
+          echo ${{ steps.gitops_image.outputs.gitops_image }}
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
