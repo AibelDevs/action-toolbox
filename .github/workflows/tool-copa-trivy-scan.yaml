@@ -133,6 +133,7 @@ jobs:
           set_output('team_name', team_name)
           set_output('image_name', image_name)
           set_output('gitops_file', gitops_file)
+          set_output('kind', kind)
 
       - name: docker ACR login
         uses: azure/docker-login@v1
@@ -215,7 +216,7 @@ jobs:
                 print(f'{name}={value}', file=fh)
 
           yaml = ruamel.yaml.YAML()
-          kind = "${{ inputs.gitops_kind }}"
+          kind = "${{ steps.gitops_image.outputs.kind }}"
           gitops_file = "${{ steps.gitops_image.outputs.gitops_file }}"
                   
           with open(gitops_file, "r") as f:
@@ -225,8 +226,8 @@ jobs:
               if block["kind"] != kind:
                   print(kind)
                   continue
-              block${{ inputs.gitops_image_path }} = "${{ env.patched_image_name }}"
-              print(${{ inputs.gitops_image_path }})
+              block${{ matrix.gitops.image_path }} = "${{ env.patched_image_name }}"
+              print(${{ matrix.gitops.image_path }})
 
           with open(gitops_file, "w") as f:
               yaml.dump_all(yaml_blocks, f)
