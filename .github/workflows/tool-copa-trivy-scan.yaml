@@ -84,6 +84,9 @@ jobs:
 
       - name: Read gitops yaml
         id: gitops_image
+        if: env.GITOPS_DISABLED != 'true'
+        env:
+          DOCKER_MATRIX: ${{ inputs.docker_matrix }}
         working-directory: ./gitops
         continue-on-error: true
         shell: python
