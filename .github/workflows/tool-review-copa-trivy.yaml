@@ -17,6 +17,10 @@ on:
     secrets:
       CONTAINER_REGISTRY_URL:
         required: false
+      CONTAINER_REGISTRY_USERNAME:
+        required: false
+      CONTAINER_REGISTRY_PASSWORD:
+        required: false
       GITOPS_KEY:
         required: false
       SOURCE_KEY:
