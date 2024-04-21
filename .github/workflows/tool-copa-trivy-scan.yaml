@@ -226,7 +226,7 @@ jobs:
               if block["kind"] != kind:
                   print(kind)
                   continue
-              block${{ matrix.gitops.image_path }} = ${{ env.patched_image_name }}
+              block${{ matrix.gitops.image_path }} = "${{ env.patched_image_name }}"
 
           with open(gitops_file, "w") as f:
               yaml.dump_all(yaml_blocks, f)
