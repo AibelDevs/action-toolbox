@@ -130,6 +130,8 @@ jobs:
               print(gitops_image)
           
           set_output('gitops_image', gitops_image)
+          set_output('team_name', team_name)
+          set_output('image_name', image_name)
 
       - name: docker ACR login
         uses: azure/docker-login@v1
@@ -181,7 +183,7 @@ jobs:
           echo "current_time=$current_time" >> $GITHUB_ENV
           ./copa patch -i ${{ steps.gitops_image.outputs.gitops_image }} -r report.json -t patched-$current_time
           echo "copa_patch=true" >> $GITHUB_OUTPUT
-          echo "patched_image_name=${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:patched-$current_time" >> $GITHUB_ENV
+          echo "patched_image_name=${{ secrets.CONTAINER_REGISTRY_URL }}/${{ steps.gitops_image.outputs.team_name }}/${{ steps.gitops_image.outputs.image_name }}:patched-$current_time" >> $GITHUB_ENV
         env:
           COPA_VERSION: 0.6.0
 
@@ -191,7 +193,7 @@ jobs:
         if: steps.copa_patch.outputs.copa_patch == 'true'
         run: |
           echo ${{ env.patched_image_name }}
-          docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:patched-${{ env.current_time }}
+          docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ steps.gitops_image.outputs.team_name }}/${{ steps.gitops_image.outputs.image_name }}:patched-${{ env.current_time }}
 
       
       - name: Write gitops yaml
