@@ -36,7 +36,6 @@ jobs:
     with:
       push_commit: 'false'
       release_tag_override: "0.0.99"
-      create_run_logs: 'true'
       docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
       gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
     secrets:
