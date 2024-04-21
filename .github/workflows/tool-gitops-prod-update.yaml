@@ -47,7 +47,7 @@ on:
 
 jobs:
   generateProdRelease:
-    name: Update Gitops "${{ matrix.prod.name }}"
+    name: Update Gitops "${{ matrix.gitops.prod.name }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -57,7 +57,7 @@ jobs:
     steps:
       - name: Check if matrix.docker.enabled is true
         run: |
-          if [[ "${{ matrix.prod.enabled }}" == "false" ]]; then
+          if [[ "${{ matrix.gitops.prod.enabled }}" == "false" ]]; then
             echo "Gitops is disabled for this tool"
             echo "GITOPS_DISABLED=true" >> $GITHUB_ENV
           fi
@@ -80,7 +80,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          repository: "${{ matrix.prod.repo }}"
+          repository: "${{ matrix.gitops.prod.repo }}"
           ssh-key: ${{ secrets.GITOPS_KEY }}
           path: gitops
 
@@ -99,7 +99,7 @@ jobs:
           yaml = ruamel.yaml.YAML()
           
           docker_json = json.loads(os.environ["DOCKER_MATRIX"])
-          docker_ref = "${{ matrix.prod.docker_ref }}"
+          docker_ref = "${{ matrix.gitops.prod.docker_ref }}"
           docker_matrix = {x["ref_name"]: x for x in docker_json["docker"]}
           print(docker_matrix)
           
@@ -109,8 +109,8 @@ jobs:
           tag = "${{ inputs.release_tag_override }}"
           
           docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}"
-          prod_gitops_file = "${{ matrix.prod.file }}"
-          kind = "${{ matrix.prod.kind }}"
+          prod_gitops_file = "${{ matrix.gitops.prod.file }}"
+          kind = "${{ matrix.gitops.prod.kind }}"
         
           with open(prod_gitops_file, "r") as f:
               yaml_blocks = list(yaml.load_all(f))
@@ -119,7 +119,7 @@ jobs:
           for block in yaml_blocks:
               if block["kind"] != kind:
                   continue
-              block${{ matrix.prod.image_path }} = docker_image
+              block${{ matrix.gitops.prod.image_path }} = docker_image
       
           with open(prod_gitops_file, "w") as f:
               yaml.dump_all(yaml_blocks, f)
