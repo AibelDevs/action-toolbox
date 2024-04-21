@@ -132,6 +132,7 @@ jobs:
           set_output('gitops_image', gitops_image)
           set_output('team_name', team_name)
           set_output('image_name', image_name)
+          set_output('gitops_file', gitops_file)
 
       - name: docker ACR login
         uses: azure/docker-login@v1
@@ -214,9 +215,8 @@ jobs:
                 print(f'{name}={value}', file=fh)
 
           yaml = ruamel.yaml.YAML()
-          gitops_file = '${{ inputs.gitops_file }}'
           kind = "${{ inputs.gitops_kind }}"
-
+          gitops_file = "${{ steps.gitops_image.outputs.gitops_file }}
                   
           with open(gitops_file, "r") as f:
             yaml_blocks = list(yaml.load_all(f))
