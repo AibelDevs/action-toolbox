@@ -1,0 +1,143 @@
+name: tool-gitops-prod-update
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: "Python version"
+        type: string
+        required: false
+        default: "3.11"
+      python_yaml_pkg:
+        description: "ruamel.yaml pkg to use"
+        type: string
+        required: false
+        default: "0.17.35"
+      release_tag_override:
+        description: "docker tag to use"
+        type: string
+        required: false
+        default: "0.0.0"
+      push_commit:
+        description: "set to true to enable"
+        type: string
+        required: false
+        default: "false"
+      docker_matrix:
+        description: "docker matrix"
+        type: string
+        required: false
+        default: ""
+      prod_matrix:
+        description: "gitops matrix"
+        type: string
+        required: false
+        default: ""
+    secrets:
+      GITOPS_KEY:
+        required: false
+      SOURCE_KEY:
+        required: false
+      CONTAINER_REGISTRY_URL:
+        required: false
+      CONTAINER_REGISTRY_USERNAME:
+        required: false
+      CONTAINER_REGISTRY_PASSWORD:
+        required: false
+
+jobs:
+  generateProdRelease:
+    name: Update Gitops "${{ matrix.prod.name }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJson(inputs.prod_matrix) }}
+
+    steps:
+      - name: Check if matrix.docker.enabled is true
+        run: |
+          if [[ "${{ matrix.prod.enabled }}" == "false" ]]; then
+            echo "Gitops is disabled for this tool"
+            echo "GITOPS_DISABLED=true" >> $GITHUB_ENV
+          fi
+
+      - name: Set up Python ${{ inputs.python_version }}
+        if: env.GITOPS_DISABLED != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install python dependencies
+        if: env.GITOPS_DISABLED != 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruamel.yaml==${{inputs.python_yaml_pkg}}
+
+      - name: Checkout gitops
+        if: env.GITOPS_DISABLED != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          repository: "${{ matrix.prod.repo }}"
+          ssh-key: ${{ secrets.GITOPS_KEY }}
+          path: gitops
+
+      - name: Collect gitops config
+        if: env.GITOPS_DISABLED != 'true'
+        env:
+          DOCKER_MATRIX: ${{ inputs.docker_matrix }}
+        working-directory: ./gitops
+        continue-on-error: true
+        shell: python
+        run: |
+          import ruamel.yaml
+          import json
+          import os
+
+          yaml = ruamel.yaml.YAML()
+          
+          docker_json = json.loads(os.environ["DOCKER_MATRIX"])
+          docker_ref = "${{ matrix.prod.docker_ref }}"
+          docker_matrix = {x["ref_name"]: x for x in docker_json["docker"]}
+          print(docker_matrix)
+          
+          docker_to_gitops = docker_matrix[docker_ref]
+          team_name = docker_to_gitops["team_name"]
+          image_name = docker_to_gitops["image_name"]
+          tag = "${{ inputs.release_tag_override }}"
+          
+          docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}"
+          prod_gitops_file = "${{ matrix.prod.file }}"
+          kind = "${{ matrix.prod.kind }}"
+        
+          with open(prod_gitops_file, "r") as f:
+              yaml_blocks = list(yaml.load_all(f))
+      
+          # Update yaml kind blocks with latest image
+          for block in yaml_blocks:
+              if block["kind"] != kind:
+                  continue
+              block${{ matrix.prod.image_path }} = docker_image
+      
+          with open(prod_gitops_file, "w") as f:
+              yaml.dump_all(yaml_blocks, f)
+          
+          
+      - name: Gitops - commit yaml
+        if: env.GITOPS_DISABLED != 'true'
+        working-directory: ./gitops
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          git commit --allow-empty -m "Prod updated ${{ matrix.gitops.docker_ref }}:${{ inputs.release_tag_override }}"
+
+      - name: Gitops - push yaml
+        if: inputs.push_commit == 'true' && env.GITOPS_DISABLED != 'true'
+        working-directory: ./gitops
+        run: |
+          git push
+
+  
