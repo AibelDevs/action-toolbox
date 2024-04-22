@@ -120,7 +120,7 @@ jobs:
           tag = "${{ inputs.release_tag_override }}"
 
           name = "${{ matrix.gitops.name }}"
-          if name == "GitopsProdDeployment":
+          if "${{ matrix.gitops.name }}" == 'GitopsProdDeployment':
             print(name)
           
           docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}"
