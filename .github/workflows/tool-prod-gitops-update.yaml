@@ -1,4 +1,4 @@
-name: tool-review-gitops
+name: tool-prod-gitops-update
 on:
   workflow_call:
     inputs:
@@ -22,8 +22,6 @@ on:
       CONTAINER_REGISTRY_URL:
         required: false
       GITOPS_KEY:
-        required: false
-      SOURCE_KEY:
         required: false
 
 jobs:
