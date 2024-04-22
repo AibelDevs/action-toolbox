@@ -1,5 +1,5 @@
 name: tool-review-gitops
-'on':
+on:
   workflow_call:
     inputs:
       python_version:
@@ -30,6 +30,7 @@ name: tool-review-gitops
         required: false
       SOURCE_KEY:
         required: false
+
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml

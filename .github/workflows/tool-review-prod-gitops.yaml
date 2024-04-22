@@ -1,0 +1,30 @@
+name: tool-review-prod-gitops
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: 'Python version'
+        type: string
+        required: false
+        default: '3.11'
+      env:
+        description: Release Env
+        type: string
+        required: false
+        default: test
+      release_version:
+        description: Release version
+        type: string
+        required: false
+    secrets:
+      CONTAINER_REGISTRY_URL:
+        required: false
+      GITOPS_KEY:
+        required: false
+      SOURCE_KEY:
+        required: false
+
+jobs:
+  load-config:
+    uses: ./.github/workflows/tool-load-config.yaml
+
