@@ -37,9 +37,6 @@ jobs:
       release_tag_override: ${{ inputs.release_version }}
       docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
       gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
-    secrets:
-      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
-      GITOPS_KEY: ${{ secrets.GITOPS_KEY }}
     strategy:
       fail-fast: false
       max-parallel: 1
