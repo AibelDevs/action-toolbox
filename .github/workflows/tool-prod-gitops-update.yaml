@@ -11,6 +11,16 @@ on:
         description: "release version"
         type: string
         required: false
+      docker_matrix:
+        description: "docker matrix"
+        type: string
+        required: false
+        default: ""
+      gitops_matrix:
+        description: "gitops matrix"
+        type: string
+        required: false
+        default: ""
     outputs:
       gitops_review_str:
         description: "Body of the comment"
@@ -25,22 +35,16 @@ on:
         required: false
 
 jobs:
-  load-config:
-    uses: ./.github/workflows/tool-load-config.yaml
-
-  prod_gitops:
+  ProdRelease:
     name: Update Gitops "${{ matrix.gitops.name }}"
     runs-on: ubuntu-latest
-    needs: load-config
-    env:
-      push_commit: 'true'
-      release_tag_override: ${{ inputs.release_version }}
-      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
-      gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
+    outputs:
+      update_log: ${{ steps.update_log.outputs.update_log }}
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix: ${{ fromJson(inputs.gitops_matrix) }}
+  
 
     steps:
       - name: Check if matrix.docker.enabled is true
