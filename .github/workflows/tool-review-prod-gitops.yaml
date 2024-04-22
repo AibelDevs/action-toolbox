@@ -28,3 +28,15 @@ jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
 
+prod_gitops:
+    uses: ./.github/workflows/tool-prod-gitops-update.yaml
+    needs: load-config
+    if: ${{ inputs.env }} == 'prod'
+    with:
+      push_commit: 'true'
+      release_version: ${{ inputs.release_version }}
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
+    secrets:
+      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
+      GITOPS_KEY: ${{ secrets.GITOPS_KEY }}

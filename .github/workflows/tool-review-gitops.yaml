@@ -7,15 +7,6 @@ on:
         type: string
         required: false
         default: '3.11'
-      env:
-        description: Release Env
-        type: string
-        required: false
-        default: test
-      release_version:
-        description: Release version
-        type: string
-        required: false
     outputs:
       gitops_review_str:
         description: Body of the comment
@@ -38,7 +29,6 @@ jobs:
   test_gitops:
     uses: ./.github/workflows/tool-release-gitops-update.yaml
     needs: load-config
-    if: ${{ inputs.env }} == 'test'
     with:
       push_commit: 'false'
       release_tag_override: "0.0.99"
@@ -49,19 +39,7 @@ jobs:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
       GITOPS_KEY: ${{ secrets.GITOPS_KEY }}
 
-   prod_gitops:
-    uses: ./.github/workflows/tool-prod-gitops-update.yaml
-    needs: load-config
-    if: ${{ inputs.env }} == 'prod'
-    with:
-      push_commit: 'true'
-      release_version: ${{ inputs.release_version }}
-      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
-      gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
-    secrets:
-      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
-      GITOPS_KEY: ${{ secrets.GITOPS_KEY }}
-
+   
   review_gitops:
     runs-on: ubuntu-latest
     needs: [ test_gitops, load-config ]
