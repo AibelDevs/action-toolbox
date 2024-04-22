@@ -21,6 +21,11 @@ on:
         type: string
         required: false
         default: ""
+      push_commit:
+        description: "set to true to enable"
+        type: string
+        required: false
+        default: "false"
     outputs:
       gitops_review_str:
         description: "Body of the comment"
