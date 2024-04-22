@@ -74,19 +74,19 @@ jobs:
           fi
 
       - name: Set up Python ${{ inputs.python_version }}
-        if: env.GITOPS_DISABLED != 'true' || "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
+        if: env.GITOPS_DISABLED != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}
 
       - name: Install python dependencies
-        if: env.GITOPS_DISABLED != 'true' || "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
+        if: env.GITOPS_DISABLED != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install ruamel.yaml==${{inputs.python_yaml_pkg}}
 
       - name: Checkout gitops
-        if: env.GITOPS_DISABLED != 'true' || "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
+        if: env.GITOPS_DISABLED != 'true'
         uses: actions/checkout@v4
         with:
           ref: main
@@ -96,7 +96,7 @@ jobs:
           path: gitops
 
       - name: Collect gitops config
-        if: env.GITOPS_DISABLED != 'true' || "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
+        if: env.GITOPS_DISABLED != 'true'
         env:
           DOCKER_MATRIX: ${{ inputs.docker_matrix }}
         working-directory: ./gitops
@@ -118,10 +118,6 @@ jobs:
           team_name = docker_to_gitops["team_name"]
           image_name = docker_to_gitops["image_name"]
           tag = "${{ inputs.release_tag_override }}"
-
-          name = "${{ matrix.gitops.name }}"
-          if "${{ matrix.gitops.name }}" == "GitopsProdDeployment":
-            print("${{ matrix.gitops.name }}")
           
           docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}"
           gitops_file = "${{ matrix.gitops.file }}"

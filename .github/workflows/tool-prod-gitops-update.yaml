@@ -1,0 +1,139 @@
+name: tool-review-gitops
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: "Python version"
+        type: string
+        required: false
+        default: "3.11"
+      release_version:
+        description: "release version"
+        type: string
+        required: false
+    outputs:
+      gitops_review_str:
+        description: "Body of the comment"
+        value: ${{ jobs.review_gitops.outputs.gitops_review_str }}
+      gitops_review_ok:
+        description: "Is the GITOPS config ok"
+        value: ${{ jobs.review_gitops.outputs.gitops_review_ok }}
+    secrets:
+      CONTAINER_REGISTRY_URL:
+        required: false
+      GITOPS_KEY:
+        required: false
+      SOURCE_KEY:
+        required: false
+
+jobs:
+  load-config:
+    uses: ./.github/workflows/tool-load-config.yaml
+
+  prod_gitops:
+    name: Update Gitops "${{ matrix.gitops.name }}"
+    runs-on: ubuntu-latest
+    needs: load-config
+    with:
+      push_commit: 'true'
+      release_tag_override: ${{ inputs.release_version }}
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
+    secrets:
+      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
+      GITOPS_KEY: ${{ secrets.GITOPS_KEY }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJson(inputs.gitops_matrix) }}
+
+    steps:
+      - name: Check if matrix.docker.enabled is true
+        run: |
+          if [[ "${{ matrix.gitops.enabled }}" == "false" ]]; then
+            echo "Gitops is disabled for this tool"
+            echo "GITOPS_DISABLED=true" >> $GITHUB_ENV
+          fi
+
+      - name: Set up Python ${{ inputs.python_version }}
+        if: env.GITOPS_DISABLED != 'true' || "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install python dependencies
+        if: env.GITOPS_DISABLED != 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruamel.yaml==${{inputs.python_yaml_pkg}}
+
+      - name: Checkout gitops
+        if: env.GITOPS_DISABLED != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          repository: "${{ matrix.gitops.repo }}"
+          ssh-key: ${{ secrets.GITOPS_KEY }}
+          path: gitops
+
+      - name: Collect gitops config
+        if: env.GITOPS_DISABLED != 'true'
+        env:
+          DOCKER_MATRIX: ${{ inputs.docker_matrix }}
+        working-directory: ./gitops
+        continue-on-error: true
+        shell: python
+        run: |
+          import ruamel.yaml
+          import json
+          import os
+
+          yaml = ruamel.yaml.YAML()
+          
+          docker_json = json.loads(os.environ["DOCKER_MATRIX"])
+          docker_ref = "${{ matrix.gitops.docker_ref }}"
+          docker_matrix = {x["ref_name"]: x for x in docker_json["docker"]}
+          print(docker_matrix)
+          
+          docker_to_gitops = docker_matrix[docker_ref]
+          team_name = docker_to_gitops["team_name"]
+          image_name = docker_to_gitops["image_name"]
+          tag = "${{ inputs.release_tag_override }}"
+          
+          docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}"
+          gitops_file = "${{ matrix.gitops.file }}"
+          kind = "${{ matrix.gitops.kind }}"
+        
+          with open(gitops_file, "r") as f:
+              yaml_blocks = list(yaml.load_all(f))
+      
+          # Update yaml kind blocks with latest image
+          for block in yaml_blocks:
+              if block["kind"] != kind:
+                  continue
+              block${{ matrix.gitops.image_path }} = docker_image
+      
+          with open(gitops_file, "w") as f:
+              yaml.dump_all(yaml_blocks, f)
+          
+          if "${{ inputs.create_run_logs }}" == 'true':
+            # Create a file with the build log. File name should have the github action run id in it to avoid collisions
+            gitops_file = "${{ github.workspace }}/build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.docker_ref }}.txt"
+            with open(gitops_file, "w") as f:
+                f.write(docker_ref)
+
+      - name: Gitops - commit yaml
+        if: env.GITOPS_DISABLED != 'true'
+        working-directory: ./gitops
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          git commit --allow-empty -m "Test updated ${{ matrix.gitops.docker_ref }}:${{ inputs.release_tag_override }}"
+
+      - name: Gitops - push yaml
+        if: inputs.push_commit == 'true' && env.GITOPS_DISABLED != 'true'
+        working-directory: ./gitops
+        run: |
+          git push
