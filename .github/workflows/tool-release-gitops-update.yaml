@@ -119,7 +119,7 @@ jobs:
           image_name = docker_to_gitops["image_name"]
           tag = "${{ inputs.release_tag_override }}"
 
-          name = docker_to_gitops["name"]
+          name = "${{ matrix.gitops.name }}"
           if "name" == "GitopsProdDeployment":
             print(name)
           
