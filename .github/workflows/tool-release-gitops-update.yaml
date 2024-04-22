@@ -118,6 +118,10 @@ jobs:
           team_name = docker_to_gitops["team_name"]
           image_name = docker_to_gitops["image_name"]
           tag = "${{ inputs.release_tag_override }}"
+
+          name = docker_to_gitops["name"]
+          if "name" == "GitopsProdDeployment":
+            print(name)
           
           docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}"
           gitops_file = "${{ matrix.gitops.file }}"
