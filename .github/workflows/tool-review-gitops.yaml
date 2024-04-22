@@ -11,7 +11,7 @@ on:
         description: "Release Env"
         type: string
         required: false
-        default: ''
+        default: 'test'
       release_version:
         description: "Release version"
         type: string
@@ -39,7 +39,7 @@ jobs:
   test_gitops:
     uses: ./.github/workflows/tool-release-gitops-update.yaml
     needs: load-config
-    if: ${{ inputs.env }} == ''
+    if: ${{ inputs.env }} == 'test'
     with:
       push_commit: 'false'
       release_tag_override: "0.0.99"
