@@ -28,7 +28,7 @@ jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
 
-prod_gitops:
+  prod_gitops:
     uses: ./.github/workflows/tool-prod-gitops-update.yaml
     needs: load-config
     if: ${{ inputs.env }} == 'prod'
