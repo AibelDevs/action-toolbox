@@ -32,7 +32,7 @@ jobs:
     name: Update Gitops "${{ matrix.gitops.name }}"
     runs-on: ubuntu-latest
     needs: load-config
-    with:
+    env:
       push_commit: 'true'
       release_tag_override: ${{ inputs.release_version }}
       docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
