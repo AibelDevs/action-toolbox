@@ -1,29 +1,28 @@
 name: tool-review-gitops
-on:
+'on':
   workflow_call:
     inputs:
       python_version:
-        description: "Python version"
+        description: Python version
         type: string
         required: false
-        default: "3.11"
+        default: '3.11'
       env:
-        description: "Release Env"
+        description: Release Env
         type: string
         required: false
-        default: 'test'
+        default: test
       release_version:
-        description: "Release version"
+        description: Release version
         type: string
         required: false
-      
     outputs:
       gitops_review_str:
-        description: "Body of the comment"
-        value: ${{ jobs.review_gitops.outputs.gitops_review_str }}
+        description: Body of the comment
+        value: '${{ jobs.review_gitops.outputs.gitops_review_str }}'
       gitops_review_ok:
-        description: "Is the GITOPS config ok"
-        value: ${{ jobs.review_gitops.outputs.gitops_review_ok }}
+        description: Is the GITOPS config ok
+        value: '${{ jobs.review_gitops.outputs.gitops_review_ok }}'
     secrets:
       CONTAINER_REGISTRY_URL:
         required: false
@@ -31,7 +30,6 @@ on:
         required: false
       SOURCE_KEY:
         required: false
-
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
