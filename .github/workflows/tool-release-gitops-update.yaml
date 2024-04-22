@@ -121,7 +121,7 @@ jobs:
 
           name = "${{ matrix.gitops.name }}"
           if "${{ matrix.gitops.name }}" == "GitopsProdDeployment":
-            print(name)
+            print("${{ matrix.gitops.name }}")
           
           docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}"
           gitops_file = "${{ matrix.gitops.file }}"
