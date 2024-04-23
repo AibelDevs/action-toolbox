@@ -47,7 +47,7 @@ on:
 jobs:
   ProdRelease:
     name: Update Gitops "${{ matrix.gitops.name }}"
-    if: ${{ inputs.env != 'prod' }}
+    if: ${{ inputs.env == 'prod' }}
     runs-on: ubuntu-latest
     outputs:
       update_log: ${{ steps.update_log.outputs.update_log }}
