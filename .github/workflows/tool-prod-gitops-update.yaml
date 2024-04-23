@@ -105,7 +105,7 @@ jobs:
           docker_to_gitops = docker_matrix[docker_ref]
           team_name = docker_to_gitops["team_name"]
           image_name = docker_to_gitops["image_name"]
-          tag = "${{ inputs.release_tag_override }}"
+          tag = "${{ inputs.release_version }}"
           
           docker_image = "${{ secrets.CONTAINER_REGISTRY_URL }}" + f"/{team_name}/{image_name}:{tag}"
           gitops_file = "${{ matrix.gitops.file }}"
