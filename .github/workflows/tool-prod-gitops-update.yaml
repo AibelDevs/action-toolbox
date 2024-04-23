@@ -59,7 +59,6 @@ jobs:
 
     steps:
       - name: Check if matrix.docker.enabled is true
-        if: ${{ matrix.gitops.name }} == GitopsProdDeployment
         run: |
           if [[ "${{ matrix.gitops.enabled }}" == "false" ]]; then
             echo "Gitops is disabled for this tool"
