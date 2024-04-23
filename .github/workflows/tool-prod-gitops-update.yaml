@@ -43,6 +43,7 @@ jobs:
   ProdRelease:
     name: Update Gitops "${{ matrix.gitops.name }}"
     runs-on: ubuntu-latest
+    if: ${{ matrix.gitops.name }} == "GitopsProdDeployment"
     outputs:
       update_log: ${{ steps.update_log.outputs.update_log }}
     strategy:
