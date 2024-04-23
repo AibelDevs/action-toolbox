@@ -67,7 +67,7 @@ jobs:
           fi
 
       - name: Set up Python ${{ inputs.python_version }}
-        if:  ${{ env.GITOPS_DISABLED != 'true' && matrix.gitops.name == 'GitopsProdDeployment' }}
+        if:  ${{ matrix.gitops.name == 'GitopsProdDeployment' }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}
