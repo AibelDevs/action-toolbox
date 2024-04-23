@@ -43,7 +43,6 @@ jobs:
   ProdRelease:
     name: Update Gitops "${{ matrix.gitops.name }}"
     runs-on: ubuntu-latest
-    if: ${{ matrix.gitops.name }} == "GitopsProdDeployment"
     outputs:
       update_log: ${{ steps.update_log.outputs.update_log }}
     strategy:
@@ -54,6 +53,7 @@ jobs:
 
     steps:
       - name: Check if matrix.docker.enabled is true
+        if: ${{ matrix.gitops.name }} == "GitopsProdDeployment"
         run: |
           if [[ "${{ matrix.gitops.enabled }}" == "false" ]]; then
             echo "Gitops is disabled for this tool"
@@ -61,20 +61,20 @@ jobs:
           fi
 
       - name: Set up Python ${{ inputs.python_version }}
-        if: env.GITOPS_DISABLED != 'true' || "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
+        if: env.GITOPS_DISABLED != 'true' && "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}
 
       - name: Install python dependencies
-        if: env.GITOPS_DISABLED != 'true'
+        if: env.GITOPS_DISABLED != 'true' && "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
         run: |
           python -m pip install --upgrade pip
           pip install toml=="0.10.2"
           pip install ruamel.yaml=="0.17.35"
 
       - name: Checkout gitops
-        if: env.GITOPS_DISABLED != 'true'
+        if: env.GITOPS_DISABLED != 'true' && "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
         uses: actions/checkout@v4
         with:
           ref: main
@@ -84,7 +84,7 @@ jobs:
           path: gitops
 
       - name: Collect gitops config
-        if: env.GITOPS_DISABLED != 'true'
+        if: env.GITOPS_DISABLED != 'true' && "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
         env:
           DOCKER_MATRIX: ${{ inputs.docker_matrix }}
         working-directory: ./gitops
@@ -130,7 +130,7 @@ jobs:
                 f.write(docker_ref)
 
       - name: Gitops - commit yaml
-        if: env.GITOPS_DISABLED != 'true'
+        if: env.GITOPS_DISABLED != 'true' && "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
         working-directory: ./gitops
         run: |
           git config user.name github-actions
@@ -139,7 +139,7 @@ jobs:
           git commit --allow-empty -m "Test updated ${{ matrix.gitops.docker_ref }}:${{ inputs.release_tag_override }}"
 
       - name: Gitops - push yaml
-        if: inputs.push_commit == 'true' && env.GITOPS_DISABLED != 'true'
+        if: inputs.push_commit == 'true' && env.GITOPS_DISABLED != 'true' && || "${{ matrix.gitops.name }}" == "GitopsProdDeployment"
         working-directory: ./gitops
         run: |
           git push
