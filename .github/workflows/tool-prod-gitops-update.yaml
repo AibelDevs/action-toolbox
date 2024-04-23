@@ -57,6 +57,7 @@ jobs:
         run: |
           if [[ "${{ matrix.gitops.enabled }}" == "false" ]]; then
             echo "Gitops is disabled for this tool"
+            echo "${{ matrix.gitops.name }}"
             echo "GITOPS_DISABLED=true" >> $GITHUB_ENV
           fi
 
