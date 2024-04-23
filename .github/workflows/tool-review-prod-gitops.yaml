@@ -37,6 +37,7 @@ jobs:
       release_version: ${{ inputs.release_version }}
       docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
       gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
+      env: ${{ inputs.env }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
       GITOPS_KEY: ${{ secrets.GITOPS_KEY }}
