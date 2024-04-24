@@ -181,8 +181,7 @@ jobs:
     
       
       - name: Push patched image to ACR
-        if: env.GITOPS_DISABLED != 'true'
-        if: steps.copa_patch.outputs.copa_patch == 'true'
+        if: steps.copa_patch.outputs.copa_patch == 'true' && env.GITOPS_DISABLED != 'true'
         run: |
           echo ${{ env.patched_image_name }}
           docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ steps.gitops_image.outputs.team_name }}/${{ steps.gitops_image.outputs.image_name }}:patched-${{ env.current_time }}
