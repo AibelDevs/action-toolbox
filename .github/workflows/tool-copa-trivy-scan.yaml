@@ -137,6 +137,7 @@ jobs:
 
             
       - name: Run Trivy vulnerability scanner
+        if: env.GITOPS_DISABLED != 'true'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.gitops_image.outputs.gitops_image }}
@@ -151,6 +152,7 @@ jobs:
             TRIVY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }} 
       
       - name: docker ACR login
+        if: env.GITOPS_DISABLED != 'true'
         uses: azure/docker-login@v1
         with:
           login-server: ${{ secrets.CONTAINER_REGISTRY_URL }}
@@ -159,6 +161,7 @@ jobs:
 
 
       - name: copa patch
+        if: env.GITOPS_DISABLED != 'true'
         #if: steps.vuln_count.outputs.vuln_count > 0
         id: copa_patch
         run: |
@@ -178,6 +181,7 @@ jobs:
     
       
       - name: Push patched image to ACR
+        if: env.GITOPS_DISABLED != 'true'
         if: steps.copa_patch.outputs.copa_patch == 'true'
         run: |
           echo ${{ env.patched_image_name }}
@@ -185,6 +189,7 @@ jobs:
 
       
       - name: Write gitops yaml
+        if: env.GITOPS_DISABLED != 'true'
         working-directory: ./gitops
         continue-on-error: true
         shell: python
@@ -219,6 +224,7 @@ jobs:
 
       
       - name: Gitops - commit yaml
+        if: env.GITOPS_DISABLED != 'true'
         working-directory: ./gitops
         run: |
           git config user.name github-actions
@@ -227,6 +233,7 @@ jobs:
           git commit --allow-empty -m "Test updated with patched image name"
 
       - name: Gitops - push yaml
+        if: env.GITOPS_DISABLED != 'true'
         working-directory: ./gitops
         run: |
           git push
