@@ -3,17 +3,17 @@ on:
   workflow_call:
     inputs:
       python_version:
-        description: "Python version"
+        description: Python version
         type: string
         required: false
-        default: "3.11"
+        default: '3.11'
     outputs:
       gitops_review_str:
-        description: "Body of the comment"
-        value: ${{ jobs.review_gitops.outputs.gitops_review_str }}
+        description: Body of the comment
+        value: '${{ jobs.review_gitops.outputs.gitops_review_str }}'
       gitops_review_ok:
-        description: "Is the GITOPS config ok"
-        value: ${{ jobs.review_gitops.outputs.gitops_review_ok }}
+        description: Is the GITOPS config ok
+        value: '${{ jobs.review_gitops.outputs.gitops_review_ok }}'
     secrets:
       CONTAINER_REGISTRY_URL:
         required: false
@@ -39,6 +39,7 @@ jobs:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
       GITOPS_KEY: ${{ secrets.GITOPS_KEY }}
 
+   
   review_gitops:
     runs-on: ubuntu-latest
     needs: [ test_gitops, load-config ]

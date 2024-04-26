@@ -1,0 +1,238 @@
+name: Copa build
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: "Python version"
+        type: string
+        required: false
+        default: "3.11"
+      python_yaml_pkg:
+        description: "ruamel.yaml pkg to use"
+        type: string
+        required: false
+        default: "0.17.35"
+      release_tag_override:
+        description: "docker tag to use"
+        type: string
+        required: false
+        default: "0.0.0"
+      push_commit:
+        description: "set to true to enable"
+        type: string
+        required: false
+        default: "false"
+      gitops_matrix:
+        description: 'GitOps Matrix'
+        type: string
+        required: false
+        default: ""
+      docker_matrix:
+        description: 'Docker matrix'
+        type: string
+        required: false
+        default: ''
+    secrets:
+      CONTAINER_REGISTRY_URL:
+        required: false
+      CONTAINER_REGISTRY_USERNAME:
+        required: false
+      CONTAINER_REGISTRY_PASSWORD:
+        required: false
+      SOURCE_KEY:
+        required: false
+      GITOPS_KEY:
+        required: false
+        
+jobs:
+  build:
+    name: Update Gitops "${{ matrix.gitops.name }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJson(inputs.gitops_matrix) }} 
+
+    steps:
+      - name: Check if matrix.docker.enabled is true
+        run: |
+          if [[ "${{ matrix.gitops.enabled }}" == "false" ]]; then
+            echo "Gitops is disabled for this tool"
+            echo "GITOPS_DISABLED=true" >> $GITHUB_ENV
+          fi
+
+      - name: Set up Python ${{ inputs.python_version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruamel.yaml==${{inputs.python_yaml_pkg}}
+
+      - name: Checkout gitops
+        if: env.GITOPS_DISABLED != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          repository: "${{ matrix.gitops.repo }}"
+          ssh-key: ${{ secrets.GITOPS_KEY }}
+          path: gitops
+
+      - name: Read gitops yaml
+        id: gitops_image
+        if: env.GITOPS_DISABLED != 'true'
+        env:
+          DOCKER_MATRIX: ${{ inputs.docker_matrix }}
+        working-directory: ./gitops
+        continue-on-error: true
+        shell: python
+        run: |
+          import ruamel.yaml
+          import json
+          import os
+          import base64
+          import pathlib
+
+          docker_json = json.loads(os.environ["DOCKER_MATRIX"])
+          docker_ref = "${{ matrix.gitops.docker_ref }}"
+          docker_matrix = {x["ref_name"]: x for x in docker_json["docker"]}
+          print(docker_matrix)
+          
+          docker_to_gitops = docker_matrix[docker_ref]
+          team_name = docker_to_gitops["team_name"]
+          image_name = docker_to_gitops["image_name"]
+
+          gitops_file = "${{ matrix.gitops.file }}"
+          kind = "${{ matrix.gitops.kind }}"
+
+          def set_output(name, value, encode_it=False):
+            if encode_it:
+              value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+
+          yaml = ruamel.yaml.YAML()
+         
+
+          print(gitops_file)
+          
+          with open(gitops_file, 'r') as f:
+            yaml_blocks = list(yaml.load_all(f))
+          
+          for block in yaml_blocks:
+              if block["kind"] != kind:
+                  continue
+              gitops_image = block${{ matrix.gitops.image_path }}
+              print(gitops_image)
+          
+          set_output('gitops_image', gitops_image)
+          set_output('team_name', team_name)
+          set_output('image_name', image_name)
+          set_output('gitops_file', gitops_file)
+          set_output('kind', kind)
+
+            
+      - name: Run Trivy vulnerability scanner
+        if: env.GITOPS_DISABLED != 'true'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.gitops_image.outputs.gitops_image }}
+          format: 'json'
+          output: 'report.json'
+          #exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+        env:
+            TRIVY_USERNAME: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+            TRIVY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }} 
+      
+      - name: docker ACR login
+        if: env.GITOPS_DISABLED != 'true'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.CONTAINER_REGISTRY_URL }}
+          username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+          password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+
+
+      - name: copa patch
+        if: env.GITOPS_DISABLED != 'true'
+        #if: steps.vuln_count.outputs.vuln_count > 0
+        id: copa_patch
+        run: |
+          wget https://github.com/project-copacetic/copacetic/releases/download/v${COPA_VERSION}/copa_${COPA_VERSION}_linux_amd64.tar.gz
+          tar -xzf copa_${COPA_VERSION}_linux_amd64.tar.gz
+          chmod +x copa
+
+          docker buildx create --use --name builder
+          current_time=$(date "+%Y.%m.%d-%H.%M.%S")
+          echo "current_time=$current_time" >> $GITHUB_ENV
+          ./copa patch -i ${{ steps.gitops_image.outputs.gitops_image }} -r report.json -t patched-$current_time
+          echo "copa_patch=true" >> $GITHUB_OUTPUT
+          echo "patched_image_name="${{ secrets.CONTAINER_REGISTRY_URL }}/${{ steps.gitops_image.outputs.team_name }}/${{ steps.gitops_image.outputs.image_name }}:patched-$current_time"" >> $GITHUB_ENV
+        env:
+          COPA_VERSION: 0.6.0
+
+    
+      
+      - name: Push patched image to ACR
+        if: steps.copa_patch.outputs.copa_patch == 'true' && env.GITOPS_DISABLED != 'true'
+        run: |
+          echo ${{ env.patched_image_name }}
+          docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ steps.gitops_image.outputs.team_name }}/${{ steps.gitops_image.outputs.image_name }}:patched-${{ env.current_time }}
+
+      
+      - name: Write gitops yaml
+        if: env.GITOPS_DISABLED != 'true'
+        working-directory: ./gitops
+        continue-on-error: true
+        shell: python
+        run: |
+          import ruamel.yaml
+          import json
+          import os
+          import base64
+          import pathlib
+
+          def set_output(name, value, encode_it=False):
+            if encode_it:
+              value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+
+          yaml = ruamel.yaml.YAML()
+          kind = "${{ steps.gitops_image.outputs.kind }}"
+          gitops_file = "${{ steps.gitops_image.outputs.gitops_file }}"
+                  
+          with open(gitops_file, "r") as f:
+            yaml_blocks = list(yaml.load_all(f))
+          
+          for block in yaml_blocks:
+              if block["kind"] != kind:
+                  print(kind)
+                  continue
+              block${{ matrix.gitops.image_path }} = "${{ env.patched_image_name }}"
+
+          with open(gitops_file, "w") as f:
+              yaml.dump_all(yaml_blocks, f)
+
+      
+      - name: Gitops - commit yaml
+        if: env.GITOPS_DISABLED != 'true'
+        working-directory: ./gitops
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          git commit --allow-empty -m "Test updated with patched image name"
+
+      - name: Gitops - push yaml
+        if: env.GITOPS_DISABLED != 'true'
+        working-directory: ./gitops
+        run: |
+          git push

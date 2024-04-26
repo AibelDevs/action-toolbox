@@ -1,0 +1,43 @@
+name: tool-review-prod-gitops
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: 'Python version'
+        type: string
+        required: false
+        default: '3.11'
+      env:
+        description: Release Env
+        type: string
+        required: false
+        default: test
+      release_version:
+        description: Release version
+        type: string
+        required: false
+    secrets:
+      CONTAINER_REGISTRY_URL:
+        required: false
+      GITOPS_KEY:
+        required: false
+      SOURCE_KEY:
+        required: false
+
+jobs:
+  load-config:
+    uses: ./.github/workflows/tool-load-config.yaml
+
+  prod_gitops:
+    uses: ./.github/workflows/tool-prod-gitops-update.yaml
+    needs: load-config
+    if: ${{ inputs.env }} == 'prod'
+    with:
+      push_commit: 'true'
+      release_version: ${{ inputs.release_version }}
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
+      env: ${{ inputs.env }}
+    secrets:
+      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
+      GITOPS_KEY: ${{ secrets.GITOPS_KEY }}

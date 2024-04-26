@@ -1,0 +1,45 @@
+name: tool-review-copa-trivy
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: "Python version"
+        type: string
+        required: false
+        default: "3.11"
+    outputs:
+      gitops_review_str:
+        description: "Body of the comment"
+        value: ${{ jobs.review_gitops.outputs.gitops_review_str }}
+      gitops_review_ok:
+        description: "Is the GITOPS config ok"
+        value: ${{ jobs.review_gitops.outputs.gitops_review_ok }}
+    secrets:
+      CONTAINER_REGISTRY_URL:
+        required: false
+      CONTAINER_REGISTRY_USERNAME:
+        required: false
+      CONTAINER_REGISTRY_PASSWORD:
+        required: false
+      GITOPS_KEY:
+        required: false
+      SOURCE_KEY:
+        required: false
+
+jobs:
+  load-config:
+    uses: ./.github/workflows/tool-load-config.yaml
+
+  test_copa:
+    uses: ./.github/workflows/tool-copa-trivy-scan.yaml
+    needs: load-config
+    with:
+      push_commit: 'false'
+      release_tag_override: "0.0.99"
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
+    secrets:
+      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
+      CONTAINER_REGISTRY_USERNAME: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+      CONTAINER_REGISTRY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+      GITOPS_KEY: ${{ secrets.GITOPS_KEY }}
