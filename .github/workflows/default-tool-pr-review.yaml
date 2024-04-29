@@ -2,6 +2,11 @@ name: Default Review Pull Request
 
 on:
   workflow_call:
+    inputs: 
+      branch: 
+        required: false
+        type: string
+        description: 'PR Branch'
     outputs:
       review_ok:
         description: "Is the PR ok"
@@ -74,6 +79,8 @@ jobs:
     uses: ./.github/workflows/tool-review-gitops.yaml
     needs: load-config
     if: ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
+    with: 
+      branch: ${{ inputs.branch }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}

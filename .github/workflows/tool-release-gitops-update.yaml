@@ -38,6 +38,10 @@ on:
         type: string
         required: false
         default: ""
+      branch:
+        description: "Merging Branch"
+        type: string
+        required: false
     outputs:
       update_logs_str:
         description: 'Build logs'
@@ -106,14 +110,14 @@ jobs:
           import ruamel.yaml
           import json
           import os
-
+        
           yaml = ruamel.yaml.YAML()
           
           docker_json = json.loads(os.environ["DOCKER_MATRIX"])
           docker_ref = "${{ matrix.gitops.docker_ref }}"
           docker_matrix = {x["ref_name"]: x for x in docker_json["docker"]}
           print(docker_matrix)
-          
+          print(${{ inputs.docker_matrix }})
           docker_to_gitops = docker_matrix[docker_ref]
           team_name = docker_to_gitops["team_name"]
           image_name = docker_to_gitops["image_name"]
