@@ -46,6 +46,8 @@ permissions:
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
+    with: 
+      branch: ${{ inputs.branch }}
 
   pr-review:
     uses: ./.github/workflows/tool-review-pr.yaml

@@ -117,7 +117,7 @@ jobs:
           docker_ref = "${{ matrix.gitops.docker_ref }}"
           docker_matrix = {x["ref_name"]: x for x in docker_json["docker"]}
           print(docker_matrix)
-          print(${{ inputs.branch }})
+          print("${{ inputs.branch }}")
           docker_to_gitops = docker_matrix[docker_ref]
           team_name = docker_to_gitops["team_name"]
           image_name = docker_to_gitops["image_name"]

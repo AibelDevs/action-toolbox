@@ -12,12 +12,15 @@ on:
         description: "config file in repo for actions"
         type: string
         required: false
-        default: "action_config.toml"
+        default: "action_config_test.toml"
       pyproject_toml_file:
         description: "pyproject config file in repo for python"
         type: string
         required: false
         default: "pyproject.toml"
+      branch:
+        description: "pr branch"
+        type: string
     outputs:
       docker_enabled:
         description: 'Is docker enabled'
@@ -85,6 +88,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install toml=="0.10.2"
+
+      - name: Assign config toml file value
+        run: |
+          if ${{ inputs.branch == 'test' }} then
+            inputs.config_toml_file="action_config_test.toml"
+          elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}
+            inputs.config_toml_file="action_config.toml"
 
       - name: Collect config toml
         env:
