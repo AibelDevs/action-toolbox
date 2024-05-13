@@ -91,11 +91,12 @@ jobs:
 
       - name: Assign config toml file value
         run: |
-          if ${{ inputs.branch == 'test' }} then
+          if ${{ inputs.branch == 'test' }}; then
             inputs.config_toml_file="action_config_test.toml"
-          elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}
+          elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}; then
             inputs.config_toml_file="action_config.toml"
-
+          fi 
+          
       - name: Collect config toml
         env:
           CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
