@@ -94,10 +94,10 @@ jobs:
           echo ${{ inputs.branch }}
           if ${{ inputs.branch == 'test' }}; then
             echo "inside test branch"
-            inputs.config_toml_file="action_config_test.toml"
+            ${{ inputs.config_toml_file }} ="action_config_test.toml"
           elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}; then
             echo "inside main branch"
-            inputs.config_toml_file="action_config.toml"
+            ${{ inputs.config_toml_file }} ="action_config.toml"
           fi 
 
       - name: Collect config toml
