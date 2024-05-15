@@ -73,8 +73,7 @@ jobs:
       anaconda_server: ${{ steps.config.outputs.anaconda_server }}
       docker_matrix: ${{ steps.config.outputs.docker_matrix }}
       gitops_matrix: ${{ steps.config.outputs.gitops_matrix }}
-      action_toml: ${{ steps.toml_file.outputs.action_toml }}
-    steps:
+      steps:
       - name: Checkout PR or branch push origin
         uses: actions/checkout@v4
         with:
@@ -96,15 +95,15 @@ jobs:
           echo ${{ inputs.branch }}
           if ${{ inputs.branch == 'test' }}; then
             echo "inside test branch"
-            echo "::set-output name=action_toml::action_config_test.toml"
+            echo "::set-env name=action_toml::action_config_test.toml"
           elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}; then
             echo "inside main branch"
-            echo "::set-output name=action_toml::action_config.toml"
+            echo "::set-env name=action_toml::action_config.toml"
           fi 
 
       - name: Collect config toml
         env:
-          CONFIG_TOML_FILE: ${{ needs.toml_file.outputs.action_toml }}
+          CONFIG_TOML_FILE: $action_toml
           PYPROJECT_TOML_FILE: ${{ inputs.pyproject_toml_file }}
         id: config  # Set an ID for this step to reference its outputs
         shell: python
