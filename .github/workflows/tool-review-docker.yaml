@@ -7,6 +7,9 @@ on:
         type: string
         required: false
         default: '3.11'
+      branch:
+        description: "pr branch"
+        type: string
     outputs:
       docker_review_str:
         description: 'Body of the comment'

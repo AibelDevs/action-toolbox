@@ -12,7 +12,10 @@ on:
         description: "config file in repo for actions"
         type: string
         required: false
-        default: "action_config.toml"
+        default: "action_config_test.toml"
+      branch:
+        description: "pr branch"
+        type: string
     outputs:
       pr_review_str:
         description: 'Body of the comment'
@@ -29,6 +32,7 @@ jobs:
     uses: ./.github/workflows/tool-load-config.yaml
     with:
       config_toml_file: ${{ inputs.config_toml_file }}
+      branch: ${{ inputs.branch }}
 
   pr-version-calculate:
     uses: ./.github/workflows/tool-pr-version-calculate.yaml
