@@ -22,6 +22,10 @@ on:
         type: string
         required: false
         default: ""
+      branch:
+        description: PR merge branch
+        type: string
+        required: false
     secrets:
       SOURCE_KEY:
         required: false
@@ -34,6 +38,7 @@ jobs:
     uses: ./.github/workflows/tool-pr-version-calculate.yaml
     with:
       config_toml_file: ${{ inputs.config_toml_file }}
+      branch: ${{ inputs.branch }}
 
   generateRelease:
     needs: pr-version-calculate

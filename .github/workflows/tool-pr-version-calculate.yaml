@@ -88,12 +88,24 @@ jobs:
           
           set_env("LATEST_RELEASE_TAG", latest_semver_tag)
 
+      - name: Assign config toml file value
+        id: toml_file
+        run: |
+          echo ${{ inputs.branch }}
+          if ${{ inputs.branch == 'test' }}; then
+            echo "inside test branch"
+            echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT
+          elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}; then
+            echo "inside main branch"
+            echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
+          fi 
+
       - name: Check the calculated version from semantic release
         shell: python
         id: calculate_version
         env:
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
-          TOML_FILE: ${{ inputs.config_toml_file }}
+          TOML_FILE: ${{ steps.toml_file.outputs.action_toml_file }}
         run: |
           import subprocess
           import os
