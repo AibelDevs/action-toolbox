@@ -122,7 +122,6 @@ jobs:
               with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                   print(f'{name}={value}', file=fh)
           
-          python -c "import os; print('The variable from Step toml_file is', os.environ['CONFIG_TOML_FILE'])"
           print(os.environ['CONFIG_TOML_FILE'])
           data = toml.load(os.getenv("CONFIG_TOML_FILE"))
           set_output("toml_data", json.dumps(data), True)
