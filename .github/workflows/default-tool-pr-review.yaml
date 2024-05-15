@@ -60,8 +60,6 @@ jobs:
   python-review:
     uses: ./.github/workflows/tool-review-python.yaml
     needs: load-config
-    with:
-      branch: ${{ inputs.branch }}
     if: ${{ needs.load-config.outputs.python_enabled == 'true' }}
     secrets:
       CONDA_API_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
