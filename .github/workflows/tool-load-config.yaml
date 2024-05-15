@@ -73,6 +73,7 @@ jobs:
       anaconda_server: ${{ steps.config.outputs.anaconda_server }}
       docker_matrix: ${{ steps.config.outputs.docker_matrix }}
       gitops_matrix: ${{ steps.config.outputs.gitops_matrix }}
+      action_toml: ${{ steps.toml_file.outputs.action_toml }}
     steps:
       - name: Checkout PR or branch push origin
         uses: actions/checkout@v4
