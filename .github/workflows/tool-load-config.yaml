@@ -96,7 +96,7 @@ jobs:
           echo ${{ inputs.branch }}
           if ${{ inputs.branch == 'test' }}; then
             echo "inside test branch"
-            echo "::set-output name=action_toml_file::action_config_test.toml"
+            echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT
           elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}; then
             echo "inside main branch"
             echo "::set-output name=action_toml_file::action_config.toml"
@@ -104,7 +104,7 @@ jobs:
 
       - name: Collect config toml
         env:
-          CONFIG_TOML_FILE: ${{ needs.config.outputs.action_toml_file }}
+          CONFIG_TOML_FILE: ${{ needs.toml_file.outputs.action_toml_file }}
           PYPROJECT_TOML_FILE: ${{ inputs.pyproject_toml_file }}
         id: config  # Set an ID for this step to reference its outputs
         shell: python
@@ -122,7 +122,7 @@ jobs:
               with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                   print(f'{name}={value}', file=fh)
           
-          print($CONFIG_TOML_FILE)
+          print(os.environ['CONFIG_TOML_FILE'])
           data = toml.load(os.getenv("CONFIG_TOML_FILE"))
           set_output("toml_data", json.dumps(data), True)
           
