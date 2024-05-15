@@ -90,20 +90,20 @@ jobs:
           pip install toml=="0.10.2"
 
       - name: Assign config toml file value
-        id: pr_branch
+        id: toml_file
         run: |
           echo ${{ inputs.branch }}
           if ${{ inputs.branch == 'test' }}; then
             echo "inside test branch"
-            echo "::set-output name=pr_branch::action_config_test.toml"
+            echo "::set-output name=action_toml::action_config_test.toml"
           elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}; then
             echo "inside main branch"
-            echo "::set-output name=pr_branch::action_config.toml"
+            echo "::set-output name=action_toml::action_config.toml"
           fi 
 
       - name: Collect config toml
         env:
-          CONFIG_TOML_FILE: ${{ needs.pr_branch.outputs.pr_branch }}
+          CONFIG_TOML_FILE: ${{ needs.toml_file.outputs.action_toml }}
           PYPROJECT_TOML_FILE: ${{ inputs.pyproject_toml_file }}
         id: config  # Set an ID for this step to reference its outputs
         shell: python
@@ -121,6 +121,7 @@ jobs:
               with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                   print(f'{name}={value}', file=fh)
           
+          print('CONFIG_TOML_FILE')
           data = toml.load(os.getenv("CONFIG_TOML_FILE"))
           set_output("toml_data", json.dumps(data), True)
           
