@@ -97,8 +97,6 @@ jobs:
   pr-review-summary:
     name: Generate Pull Request Summary
     needs: [ load-config, pr-review, python-review, docker-review, gitops-review ]
-    with:
-      branch: ${{ inputs.branch }}
     if: always()
     runs-on: ubuntu-latest
     outputs:
