@@ -29,6 +29,8 @@ on:
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
+    with:
+      branch: ${{ inputs.branch }}
 
   test_gitops:
     uses: ./.github/workflows/tool-release-gitops-update.yaml

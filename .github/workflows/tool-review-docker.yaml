@@ -28,6 +28,8 @@ on:
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
+    with:
+      branch: ${{ inputs.branch }}
 
   docker_prep:
     name: Docker Secrets and Login Check
