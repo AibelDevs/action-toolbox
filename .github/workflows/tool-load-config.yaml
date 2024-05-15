@@ -104,7 +104,7 @@ jobs:
 
       - name: Collect config toml
         env:
-          CONFIG_TOML_FILE: ${{ needs.toml_file.outputs.action_toml_file }}
+          CONFIG_TOML_FILE: ${{ needs.config.outputs.action_toml_file }}
           PYPROJECT_TOML_FILE: ${{ inputs.pyproject_toml_file }}
         id: config  # Set an ID for this step to reference its outputs
         shell: python
@@ -122,7 +122,7 @@ jobs:
               with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                   print(f'{name}={value}', file=fh)
           
-          print('CONFIG_TOML_FILE')
+          print($CONFIG_TOML_FILE)
           data = toml.load(os.getenv("CONFIG_TOML_FILE"))
           set_output("toml_data", json.dumps(data), True)
           
