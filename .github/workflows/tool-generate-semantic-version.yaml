@@ -44,8 +44,6 @@ jobs:
     needs: pr-version-calculate
     if: ${{ needs.pr-version-calculate.outputs.is_release == 'true' || inputs.release_override != '' }}
     runs-on: ubuntu-latest
-    with:
-      branch: ${{ inputs.branch }}
     permissions:
       id-token: write
       contents: write
