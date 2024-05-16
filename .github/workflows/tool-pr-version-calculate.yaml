@@ -14,6 +14,10 @@ on:
         type: string
         required: false
         default: "action_config.toml"
+      branch:
+        description: "PR base branch name"
+        type: string
+        required: false
     outputs:
       calculated_version:
         description: "Calculated version"
