@@ -13,7 +13,7 @@ on:
         description: "config file in repo for actions"
         type: string
         required: false
-        default: "action_config.toml"
+        default: "action_config_test.toml"
       branch:
         description: "PR base branch name"
         type: string

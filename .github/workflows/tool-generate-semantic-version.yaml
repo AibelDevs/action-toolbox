@@ -11,7 +11,7 @@ on:
         description: "config file in repo for actions"
         type: string
         required: false
-        default: "action_config.toml"
+        default: "action_config_test.toml"
       python_semantic_release_pkg:
         description: "python-semantic-release pkg to use"
         type: string
@@ -43,6 +43,8 @@ jobs:
   generateRelease:
     needs: pr-version-calculate
     if: ${{ needs.pr-version-calculate.outputs.is_release == 'true' || inputs.release_override != '' }}
+    with:
+      branch: ${{ inputs.branch }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -80,8 +82,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install python-semantic-release=="${{ inputs.python_semantic_release_pkg }}"
 
+      - name: Assign config toml file value
+        id: toml_file
+        run: |
+          echo ${{ inputs.branch }}
+          if ${{ inputs.branch == 'test' }}; then
+            echo "inside test branch"
+            echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT
+          elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}; then
+            echo "inside main branch"
+            echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run semantic release force ${{ env.RELEASE_OVERRIDE }}
         run: |
-          semantic-release --config ${{ inputs.config_toml_file }} version --changelog ${{ env.RELEASE_OVERRIDE }} --vcs-release
+          semantic-release --config ${{ steps.toml_file.outputs.action_toml_file }} version --changelog ${{ env.RELEASE_OVERRIDE }} --vcs-release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
