@@ -38,6 +38,10 @@ on:
         type: string
         required: false
         default: ""
+      branch:
+        description: PR Merge Branch Name
+        type: string
+        required: false
     outputs:
       update_logs_str:
         description: 'Build logs'
