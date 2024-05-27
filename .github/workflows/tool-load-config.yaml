@@ -18,6 +18,9 @@ on:
         type: string
         required: false
         default: "pyproject.toml"
+      branch:
+        description: "pr branch"
+        type: string
     outputs:
       docker_enabled:
         description: 'Is docker enabled'
@@ -86,9 +89,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install toml=="0.10.2"
 
+      - name: Assign config toml file value
+        id: toml_file
+        run: |
+          echo ${{ inputs.branch }}
+          if ${{ inputs.branch == 'test' }}; then
+            echo "inside test branch"
+            echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT
+          elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}; then
+            echo "inside main branch"
+            echo "::set-output name=action_toml_file::action_config.toml"
+          fi
+
       - name: Collect config toml
         env:
-          CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
+          CONFIG_TOML_FILE: ${{ steps.toml_file.outputs.action_toml_file }}
           PYPROJECT_TOML_FILE: ${{ inputs.pyproject_toml_file }}
         id: config  # Set an ID for this step to reference its outputs
         shell: python
