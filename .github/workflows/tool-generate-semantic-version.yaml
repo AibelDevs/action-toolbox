@@ -22,7 +22,9 @@ on:
         type: string
         required: false
         default: ""
-      
+      branch:
+        description: "pr branch"
+        type: string
     secrets:
       SOURCE_KEY:
         required: false

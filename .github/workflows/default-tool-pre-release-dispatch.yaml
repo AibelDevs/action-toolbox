@@ -28,6 +28,9 @@ on:
         required: false
         type: string
         default: "patch"
+      branch:
+        description: "pr branch"
+        type: string
     secrets:
       SOURCE_KEY:
         required: false
