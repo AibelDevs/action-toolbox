@@ -182,8 +182,6 @@ jobs:
         with:
           pattern: build-log-gitops-${{ github.run_id }}-*  # Download the build log artifact
           merge-multiple: true
-          pattern: build-log-gitops-${{ github.run_id }}-*  # Download the build log artifact
-          merge-multiple: true
           path: ${{ env.BUILD_LOG_DIR }}
 
       - name: Review Build Logs and
