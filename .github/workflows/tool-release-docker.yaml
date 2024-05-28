@@ -1,49 +1,54 @@
   name: tool-release-docker
 
-  on:
-    workflow_call:
-      inputs:
-        push_docker:
-          description: 'Push docker image'
-          type: string
-          required: false
-          default: "false"
-        docker_use_latest:
-          description: 'Push docker image with latest tag'
-          type: string
-          required: false
-          default: false
-        docker_tag_override:
-          description: 'Override docker tag'
-          type: string
-          required: false
-          default: ''
-        create_build_logs:
-          description: 'Create build logs (for testing only)'
-          type: string
-          required: false
-          default: false
-        python_version:
-          description: 'Python version'
-          type: string
-          required: false
-          default: '3.11'
-        docker_matrix:
-          description: 'Docker matrix'
-          type: string
-          required: false
-          default: ''
-      outputs:
-        build_logs_str:
-          description: 'Build logs'
-          value: ${{ jobs.summarize_build_logs.outputs.build_log_summary }}
-      secrets:
-        CONTAINER_REGISTRY_URL:
-          required: false
-        CONTAINER_REGISTRY_USERNAME:
-          required: false
-        CONTAINER_REGISTRY_PASSWORD:
-          required: false
+on:
+  workflow_call:
+    inputs:
+      push_docker:
+        description: 'Push docker image'
+        type: string
+        required: false
+        default: "false"
+      docker_use_latest:
+        description: 'Push docker image with latest tag'
+        type: string
+        required: false
+        default: false
+      docker_tag_override:
+        description: 'Override docker tag'
+        type: string
+        required: false
+        default: ''
+      create_build_logs:
+        description: 'Create build logs (for testing only)'
+        type: string
+        required: false
+        default: false
+      python_version:
+        description: 'Python version'
+        type: string
+        required: false
+        default: '3.11'
+      docker_matrix:
+        description: 'Docker matrix'
+        type: string
+        required: false
+        default: ''
+      config_toml_data:
+        description: "Toml config file for actions base64 encoded"
+        type: string
+        required: false
+        default: ""
+    outputs:
+      build_logs_str:
+        description: 'Build logs'
+        value: ${{ jobs.summarize_build_logs.outputs.build_log_summary }}
+    secrets:
+      CONTAINER_REGISTRY_URL:
+        required: false
+      CONTAINER_REGISTRY_USERNAME:
+        required: false
+      CONTAINER_REGISTRY_PASSWORD:
+        required: false
 
   env:
     IS_PRE_RELEASE: 'false'
@@ -70,10 +75,10 @@
           with:
             ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
-        - uses: actions/setup-python@v4
-          if: env.DOCKER_DISABLED != 'true'
-          with:
-            python-version: ${{ inputs.python_version }}
+      - uses: actions/setup-python@v5
+        if: env.DOCKER_DISABLED != 'true'
+        with:
+          python-version: ${{ inputs.python_version }}
 
         - name: Install deps
           if: env.DOCKER_DISABLED != 'true'
@@ -104,31 +109,27 @@
                 print("IS_PRE_RELEASE=false")
                 set_env('IS_PRE_RELEASE', 'false')
 
-        - name: Update pyproject.toml and package.json (if exists) on pre-release
-          if: env.IS_PRE_RELEASE == 'true' && env.DOCKER_DISABLED != 'true'
-          env:
-            INPUT_DOCKER_TAG_OVERRIDE: ${{ inputs.docker_tag_override }}
-          shell: python
-          run: |
-              import os
-              import pathlib
-              import toml
-              import json
-              
-              def set_env(name, value):
-                  with open(os.environ['GITHUB_ENV'], 'a') as fh:
-                      print(f'{name}={value}', file=fh)
-              
-              pyproject_tomls = list(pathlib.Path('').rglob('pyproject.toml'))
-              package_jsons = list(pathlib.Path('').rglob('package.json'))
-              version_override = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
-              print(f"{version_override=}")
-              
-              # Check if pyproject.toml exists
-              if len(pyproject_tomls) > 0:
-                  print("Found pyproject.toml")
-                  pyproject_toml = pyproject_tomls[0]
-                  print(f"{pyproject_toml=}")
+      - name: Update pyproject.toml and package.json (if exists) on pre-release
+        if: env.IS_PRE_RELEASE == 'true' && env.DOCKER_DISABLED != 'true'
+        env:
+          INPUT_DOCKER_TAG_OVERRIDE: ${{ inputs.docker_tag_override }}
+        shell: python
+        run: |
+            import os
+            import pathlib
+            import toml
+            import json
+            
+            pyproject_tomls = list(pathlib.Path('').rglob('pyproject.toml'))
+            package_jsons = list(pathlib.Path('').rglob('package.json'))
+            version_override = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
+            print(f"{version_override=}")
+            
+            # Check if pyproject.toml exists
+            if len(pyproject_tomls) > 0:
+                print("Found pyproject.toml")
+                for pyproject_toml in pyproject_tomls:
+                  print(f"Updating {pyproject_toml=}")
                   
                   # Read pyproject.toml
                   with open(pyproject_toml, 'r') as file:
@@ -145,12 +146,12 @@
                   with open(pyproject_toml, 'w') as file:
                       toml.dump(toml_data, file)
                   print(toml_data)
-              
-              # Check if package.json exists
-              if len(package_jsons) > 0:
-                  print("Found package.json")
-                  package_json = package_jsons[0]
-                  print(f"{package_json=}")
+            
+            # Check if package.json exists
+            if len(package_jsons) > 0:
+                print("Found package.json")
+                for package_json in package_jsons:
+                  print(f"Updating {package_json=}")
                   
                   # Read package.json
                   with open(package_json, 'r') as file:
@@ -178,13 +179,13 @@
               echo "${{ matrix.docker.ref_name }}" >> build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
             fi
 
-        - name: Upload Build Log
-          if: inputs.create_build_logs == 'true' && env.DOCKER_DISABLED != 'true'
-          uses: actions/upload-artifact@v4
-          continue-on-error: true # Needed to continue in the event the build fails and no build log is found
-          with:
-            name: build-log-docker-${{ github.run_id }}-${{ matrix.docker.ref_name }}
-            path: build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
+      - name: Upload Build Log
+        if: inputs.create_build_logs == 'true' && env.DOCKER_DISABLED != 'true'
+        uses: actions/upload-artifact@v4
+        continue-on-error: true # Needed to continue in the event the build fails and no build log is found
+        with:
+          name: build-log-docker-${{ github.run_id }}-${{ matrix.docker.ref_name }}
+          path: build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
 
         - name: Source - login to ACR
           if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
@@ -205,19 +206,19 @@
             docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
 
 
-    summarize_build_logs:
-      if: inputs.create_build_logs == 'true'
-      needs: build_docker
-      runs-on: ubuntu-latest
-      outputs:
-        build_log_summary: ${{ steps.summarize_build_logs.outputs.build_log_summary }}
-      steps:
-        - name: Download Build Log Artifact
-          uses: actions/download-artifact@v4
-          with:
-            pattern: build-log-docker-${{ github.run_id }}-*  # Download the build log artifact
-            merge-multiple: true
-            path: ${{ env.BUILD_LOG_DIR }}
+  summarize_build_logs:
+    if: inputs.create_build_logs == 'true'
+    needs: build_docker
+    runs-on: ubuntu-latest
+    outputs:
+      build_log_summary: ${{ steps.summarize_build_logs.outputs.build_log_summary }}
+    steps:
+      - name: Download Build Log Artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-log-docker-${{ github.run_id }}-*  # Download the build log artifact
+          merge-multiple: true
+          path: ${{ env.BUILD_LOG_DIR }}
 
         - name: Review Build Logs and
           id: summarize_build_logs  # Set an ID for this step to reference its outputs

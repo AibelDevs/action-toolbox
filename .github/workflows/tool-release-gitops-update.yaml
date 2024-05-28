@@ -79,7 +79,7 @@ jobs:
 
       - name: Set up Python ${{ inputs.python_version }}
         if: env.GITOPS_DISABLED != 'true'
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}
 
@@ -162,7 +162,7 @@ jobs:
 
       - name: Upload Build Log
         if: inputs.create_run_logs == 'true' && env.GITOPS_DISABLED != 'true'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         continue-on-error: true # Needed to continue in the event the build fails and no build log is found
         with:
           name: build-log-gitops-${{ github.run_id }}-${{ matrix.gitops.name }}
@@ -178,8 +178,10 @@ jobs:
       build_log_ok: ${{ steps.summarize_build_logs.outputs.build_log_ok }}
     steps:
       - name: Download Build Log Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
+          pattern: build-log-gitops-${{ github.run_id }}-*  # Download the build log artifact
+          merge-multiple: true
           pattern: build-log-gitops-${{ github.run_id }}-*  # Download the build log artifact
           merge-multiple: true
           path: ${{ env.BUILD_LOG_DIR }}

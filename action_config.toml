@@ -1,5 +1,5 @@
 [tool.action]
-version = "1.3.4"
+version = "1.4.0"
 # This is only relevant for this repository. Normally you will have a version in your package.json or pyproject.toml
 
 [[tool.docker]]
@@ -46,6 +46,10 @@ pre_release_tag = "dev"
 # Will change semver pre-release tags to a non-descript "dev" release tag comply with PEP440
 # See https://packaging.python.org/en/latest/specifications/version-specifiers/#public-version-identifiers
 # for more information
+[tool.python.lint]
+black_version = "24.1.1"
+ruff_version = "0.2.1"
+isort_version = "5.13.2"
 
 [tool.python.pip]
 enabled = false
@@ -69,6 +73,11 @@ enabled = false
 # Related to Conda Build recipe
 recipe_dir = "./conda"
 extra_conda_dep_channels = ["krande"]
+platforms = "ubuntu-latest,windows-latest"
+python_versions = "3.11,3.12"
+publish_runner = "ubuntu-latest"
+artifacts_retention_days = 2
+dispatch_release_workflow="conda-release-workflow-on-self-hosted"
 
 # Anaconda Related
 use_anaconda_server = true
