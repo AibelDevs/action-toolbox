@@ -72,7 +72,7 @@ jobs:
       - name: Checkout git
         if: env.DOCKER_DISABLED != 'true'
         uses: actions/checkout@v4
-         with:
+        with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - uses: actions/setup-python@v5
