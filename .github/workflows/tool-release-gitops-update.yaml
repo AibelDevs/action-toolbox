@@ -162,7 +162,7 @@ jobs:
 
       - name: Upload Build Log
         if: inputs.create_run_logs == 'true' && env.GITOPS_DISABLED != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         continue-on-error: true # Needed to continue in the event the build fails and no build log is found
         with:
           name: build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.name }}
