@@ -1,4 +1,4 @@
-  name: tool-release-docker
+name: tool-release-docker
 
 on:
   workflow_call:
