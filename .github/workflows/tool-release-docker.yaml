@@ -50,64 +50,64 @@ on:
       CONTAINER_REGISTRY_PASSWORD:
         required: false
 
-  env:
-    IS_PRE_RELEASE: 'false'
-    BUILD_LOG_DIR: ${{ github.workspace }}
+env:
+  IS_PRE_RELEASE: 'false'
+  BUILD_LOG_DIR: ${{ github.workspace }}
 
-  jobs:
-    build_docker:
-      name: Build Docker "${{ matrix.docker.ref_name }}"
-      runs-on: ubuntu-latest
-      strategy:
-        fail-fast: false
-        matrix: ${{ fromJson( inputs.docker_matrix ) }}
-      steps:
-        - name: Check if matrix.docker.enabled is true
-          run: |
-            if [[ "${{ matrix.docker.enabled }}" == "false" ]]; then
-              echo "Docker is disabled for this tool"
-              echo "DOCKER_DISABLED=true" >> $GITHUB_ENV
-            fi
-
-        - name: Checkout git
-          if: env.DOCKER_DISABLED != 'true'
-          uses: actions/checkout@v4
-          with:
-            ref: ${{ github.event.pull_request.head.sha || github.ref }}
+jobs:
+  build_docker:
+    name: Build Docker "${{ matrix.docker.ref_name }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson( inputs.docker_matrix ) }}
+    steps:
+      - name: Check if matrix.docker.enabled is true
+        run: |
+          if [[ "${{ matrix.docker.enabled }}" == "false" ]]; then
+            echo "Docker is disabled for this tool"
+            echo "DOCKER_DISABLED=true" >> $GITHUB_ENV
+          fi
+      
+      - name: Checkout git
+        if: env.DOCKER_DISABLED != 'true'
+        uses: actions/checkout@v4
+         with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - uses: actions/setup-python@v5
         if: env.DOCKER_DISABLED != 'true'
         with:
           python-version: ${{ inputs.python_version }}
 
-        - name: Install deps
-          if: env.DOCKER_DISABLED != 'true'
-          run: |
-            pip install --upgrade pip
-            pip install toml==0.10.2
+      - name: Install deps
+        if: env.DOCKER_DISABLED != 'true'
+        run: |
+          pip install --upgrade pip
+          pip install toml==0.10.2
 
-        - name: Check if release override contains "next"
-          if: env.DOCKER_DISABLED != 'true'
-          id: check_release_override
-          env:
-            INPUT_DOCKER_TAG_OVERRIDE: ${{ inputs.docker_tag_override }}
-          shell: python
-          run: |
-            import os
+      - name: Check if release override contains "next"
+        if: env.DOCKER_DISABLED != 'true'
+        id: check_release_override
+        env:
+          INPUT_DOCKER_TAG_OVERRIDE: ${{ inputs.docker_tag_override }}
+        shell: python
+        run: |
+          import os
             
-            def set_env(name, value):
-              with open(os.environ['GITHUB_ENV'], 'a') as fh:
-                  print(f'{name}={value}', file=fh)
+          def set_env(name, value):
+            with open(os.environ['GITHUB_ENV'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
             
-            release_override = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
-            print(f"{release_override=}")
+          release_override = os.getenv('INPUT_DOCKER_TAG_OVERRIDE')
+          print(f"{release_override=}")
             
-            if 'next.' in release_override:
-                print("IS_PRE_RELEASE=true")
-                set_env('IS_PRE_RELEASE', 'true')
-            else:
-                print("IS_PRE_RELEASE=false")
-                set_env('IS_PRE_RELEASE', 'false')
+          if 'next.' in release_override:
+              print("IS_PRE_RELEASE=true")
+              set_env('IS_PRE_RELEASE', 'true')
+          else:
+              print("IS_PRE_RELEASE=false")
+              set_env('IS_PRE_RELEASE', 'false')
 
       - name: Update pyproject.toml and package.json (if exists) on pre-release
         if: env.IS_PRE_RELEASE == 'true' && env.DOCKER_DISABLED != 'true'
@@ -164,20 +164,20 @@ on:
                   with open(package_json, 'w') as file:
                       json.dump(json_data, file)
 
-        - name: Build docker image with ${{ steps.set_release_tag.outputs.docker_tag }} tag
-          if: inputs.create_build_logs == 'false' && env.DOCKER_DISABLED != 'true'
-          run: |
-            docker build -f ${{ matrix.docker.context }}/${{ matrix.docker.docker_file }} -t ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:${{ inputs.docker_tag_override }} ${{ matrix.docker.context }}
+      - name: Build docker image with ${{ steps.set_release_tag.outputs.docker_tag }} tag
+        if: inputs.create_build_logs == 'false' && env.DOCKER_DISABLED != 'true'
+        run: |
+          docker build -f ${{ matrix.docker.context }}/${{ matrix.docker.docker_file }} -t ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:${{ inputs.docker_tag_override }} ${{ matrix.docker.context }}
 
-        - name: Build docker image with latest tag
-          if: ( matrix.docker.use_latest == true || inputs.create_build_logs == 'true') && env.DOCKER_DISABLED != 'true'
-          run: |
-            docker build -f ${{ matrix.docker.context }}/${{ matrix.docker.docker_file }} -t ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest ${{ matrix.docker.context }}
-            # if inputs.create_build_logs == 'true' then we will echo to file
-            if [[ "${{ inputs.create_build_logs }}" == "true" ]]; then
-              # Create a file with the build log. File name should have the github action run id in it to avoid collisions
-              echo "${{ matrix.docker.ref_name }}" >> build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
-            fi
+      - name: Build docker image with latest tag
+        if: ( matrix.docker.use_latest == true || inputs.create_build_logs == 'true') && env.DOCKER_DISABLED != 'true'
+        run: |
+          docker build -f ${{ matrix.docker.context }}/${{ matrix.docker.docker_file }} -t ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest ${{ matrix.docker.context }}
+          # if inputs.create_build_logs == 'true' then we will echo to file
+          if [[ "${{ inputs.create_build_logs }}" == "true" ]]; then
+            # Create a file with the build log. File name should have the github action run id in it to avoid collisions
+            echo "${{ matrix.docker.ref_name }}" >> build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
+          fi
 
       - name: Upload Build Log
         if: inputs.create_build_logs == 'true' && env.DOCKER_DISABLED != 'true'
@@ -187,23 +187,23 @@ on:
           name: build-log-docker-${{ github.run_id }}-${{ matrix.docker.ref_name }}
           path: build_log_docker_${{ github.run_id }}_${{ matrix.docker.ref_name }}.txt
 
-        - name: Source - login to ACR
-          if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
-          uses: docker/login-action@v3.0.0
-          with:
-            registry: ${{ secrets.CONTAINER_REGISTRY_URL }}
-            username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-            password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+      - name: Source - login to ACR
+        if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
+        uses: docker/login-action@v3.0.0
+        with:
+          registry: ${{ secrets.CONTAINER_REGISTRY_URL }}
+          username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+          password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
-        - name: Push docker image with ${{ inputs.docker_tag_override }} tag
-          if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
-          run: |
-            docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:${{ inputs.docker_tag_override }}
+      - name: Push docker image with ${{ inputs.docker_tag_override }} tag
+        if: inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
+        run: |
+          docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:${{ inputs.docker_tag_override }}
 
-        - name: Push docker image with latest tag
-          if: matrix.docker.use_latest == true && inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
-          run: |
-            docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
+      - name: Push docker image with latest tag
+        if: matrix.docker.use_latest == true && inputs.push_docker == 'true' && env.DOCKER_DISABLED != 'true'
+        run: |
+          docker push ${{ secrets.CONTAINER_REGISTRY_URL }}/${{ matrix.docker.team_name }}/${{ matrix.docker.image_name }}:latest
 
 
   summarize_build_logs:
@@ -220,25 +220,25 @@ on:
           merge-multiple: true
           path: ${{ env.BUILD_LOG_DIR }}
 
-        - name: Review Build Logs and
-          id: summarize_build_logs  # Set an ID for this step to reference its outputs
-          shell: python
-          run: |
-            import os
-            import pathlib
-            import base64
+      - name: Review Build Logs and
+        id: summarize_build_logs  # Set an ID for this step to reference its outputs
+        shell: python
+        run: |
+          import os
+          import pathlib
+          import base64
 
-            def set_output(name, value, encode_it=False):
-              if encode_it:
-                value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
-              with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-                  print(f'{name}={value}', file=fh)
+          def set_output(name, value, encode_it=False):
+            if encode_it:
+              value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
 
-            # Check if docker build was successful or not
-            build_logs = ""
-            for p in pathlib.Path(os.environ["BUILD_LOG_DIR"]).glob('build_log_docker_*.txt'):
-              with open(p, 'r') as file:
-                build_logs += file.read().strip()
-                build_logs += ";"
+          # Check if docker build was successful or not
+          build_logs = ""
+          for p in pathlib.Path(os.environ["BUILD_LOG_DIR"]).glob('build_log_docker_*.txt'):
+            with open(p, 'r') as file:
+              build_logs += file.read().strip()
+              build_logs += ";"
             
-            set_output('build_log_summary', build_logs)
+          set_output('build_log_summary', build_logs)
