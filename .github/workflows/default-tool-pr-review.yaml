@@ -7,7 +7,6 @@ on:
         description: "Extra review string (base64 encoded)"
         type: string
         required: false
-    inputs: 
       branch: 
         required: false
         type: string
