@@ -37,13 +37,13 @@ on:
         value: ${{ jobs.version_calc.outputs.issue_str }}
       has_source_key_secret:
         description: "Is SOURCE_KEY secret set"
-        value: ${{ jobs.lintCheck.outputs.has_source_key_secret }}
+        value: ${{ jobs.pr-lint-checker.outputs.has_source_key_secret }}
       check_pr_title:
         description: "Is PR title correct"
-        value: ${{ jobs.lintCheck.outputs.check_pr_title }}
+        value: ${{ jobs.pr-lint-checker.outputs.check_pr_title }}
       check_release_label:
         description: "Is release label set"
-        value: ${{ jobs.pr-lint-checker.outputs.contains_release_label }}
+        value: ${{ jobs.pr-lint-checker.outputs.check_release_label }}
     secrets:
       SOURCE_KEY:
         required: false
@@ -214,7 +214,7 @@ jobs:
     outputs:
       has_source_key_secret: ${{ steps.check-source-key.outputs.has_source_key_secret }}
       check_pr_title: ${{ steps.check_pr_title.outputs.check_pr_title }}
-      contains_release_label: ${{ steps.check_release_label.outputs.contains_release_label }}
+      check_release_label: ${{ steps.check_release_label.outputs.check_release_label }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -284,7 +284,7 @@ jobs:
           if len(intersect_labels) == 0:
             set_env("ADD_DEFAULT_LABEL", "true")
             
-          set_output("contains_release_label", "true")
+          set_output("check_release_label", "true")
 
 
       - name: Add default labels to selection
