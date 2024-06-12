@@ -43,7 +43,7 @@ on:
         value: ${{ jobs.lintCheck.outputs.check_pr_title }}
       check_release_label:
         description: "Is release label set"
-        value: ${{ jobs.lintCheck.outputs.contains_release_label }}
+        value: ${{ jobs.pr-lint-checker.outputs.contains_release_label }}
     secrets:
       SOURCE_KEY:
         required: false
