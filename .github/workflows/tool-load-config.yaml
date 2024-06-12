@@ -31,24 +31,9 @@ on:
       python_enabled:
         description: 'Is python enabled'
         value: ${{ jobs.config.outputs.python_enabled }}
-      pip_enabled:
-        description: 'Is pip enabled'
-        value: ${{ jobs.config.outputs.pip_enabled }}
-      conda_enabled:
-        description: 'Is conda enabled'
-        value: ${{ jobs.config.outputs.conda_enabled }}
       config_toml_data:
         description: 'toml data'
         value: ${{ jobs.config.outputs.toml_data }}
-      custom_pypi_server:
-        description: 'Use a custom pypi server'
-        value: ${{ jobs.config.outputs.custom_pypi_server }}
-      custom_quetz_server:
-        description: 'Use a custom quetz server'
-        value: ${{ jobs.config.outputs.custom_quetz_server }}
-      anaconda_server:
-        description: 'Use anaconda server'
-        value: ${{ jobs.config.outputs.anaconda_server }}
       docker_matrix:
         description: 'docker matrix'
         value: ${{ jobs.config.outputs.docker_matrix }}
@@ -65,12 +50,7 @@ jobs:
       docker_enabled: ${{ steps.config.outputs.docker_enabled }}
       gitops_enabled: ${{ steps.config.outputs.gitops_enabled }}
       python_enabled: ${{ steps.config.outputs.python_enabled }}
-      pip_enabled: ${{ steps.config.outputs.pip_enabled }}
-      conda_enabled: ${{ steps.config.outputs.conda_enabled }}
       toml_data: ${{ steps.config.outputs.toml_data }}
-      custom_pypi_server: ${{ steps.config.outputs.custom_pypi_server }}
-      custom_quetz_server: ${{ steps.config.outputs.custom_quetz_server }}
-      anaconda_server: ${{ steps.config.outputs.anaconda_server }}
       docker_matrix: ${{ steps.config.outputs.docker_matrix }}
       gitops_matrix: ${{ steps.config.outputs.gitops_matrix }}
     steps:
@@ -152,30 +132,5 @@ jobs:
           # I cannot pass a list to the github actions matrix, so I have to convert the list to a dict
           set_output("gitops_matrix", json.dumps({'gitops': gitops_config_list}))
           
-          
-          # Python
-          py_tool = data["tool"].get("python", dict(enabled=False))
-          python_enabled = py_tool.get("enabled", False)
-          set_output("python_enabled", python_enabled)
-          
-          if python_enabled:
-            pip_tool = py_tool.get("pip", dict(enabled=False))
-            pip_enabled = pip_tool.get("enabled", False)
-            set_output("pip_enabled", pip_enabled)
-          
-            if pip_enabled:
-              custom_pypi_server = pip_tool.get("use_custom_pypi_server", False)
-              set_output("custom_pypi_server", custom_pypi_server)
-          
-            conda_tool = py_tool.get("conda", dict(enabled=False))
-            conda_enabled = conda_tool.get("enabled", False)
-            set_output("conda_enabled", conda_enabled)
-          
-            if conda_enabled:
-              custom_quetz_server = conda_tool.get("use_custom_quetz_server", False)
-              set_output("custom_quetz_server", custom_quetz_server)
-          
-              anaconda_server = conda_tool.get("use_anaconda_server", False)
-              set_output("anaconda_server", anaconda_server)
-          
+                           
           print(data)

@@ -14,20 +14,7 @@ on:
         required: false
       CONTAINER_REGISTRY_PASSWORD:
         required: false
-      CONDA_API_TOKEN:
-        required: false
-      QUETZ_API_KEY:
-        required: false
-      QUETZ_URL:
-        required: false
-      PYPI_API_TOKEN:
-        required: false
-      CUSTOM_PYPI_USERNAME:
-        required: false
-      CUSTOM_PYPI_PASSWORD:
-        required: false
-      CUSTOM_PYPI_URL:
-        required: false
+      
 
 permissions:
   id-token: write
@@ -61,32 +48,7 @@ jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
 
-  release_pypi:
-    needs: [ load-config, interpret_tag ]
-    if: ${{ needs.load-config.outputs.pip_enabled == 'true' }}
-    uses: ./.github/workflows/tool-release-pip.yaml
-    with:
-      use_custom_pypi: ${{ needs.load-config.outputs.custom_pypi_server }}
-    secrets:
-      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-      CUSTOM_PYPI_USERNAME: ${{ secrets.CUSTOM_PYPI_USERNAME }}
-      CUSTOM_PYPI_PASSWORD: ${{ secrets.CUSTOM_PYPI_PASSWORD }}
-      CUSTOM_PYPI_URL: ${{ secrets.CUSTOM_PYPI_URL }}
-
-  release_conda:
-    needs: [ load-config, interpret_tag ]
-    if: ${{ needs.load-config.outputs.conda_enabled == 'true' }}
-    uses: ./.github/workflows/tool-release-conda.yaml
-    with:
-      use_quetz_server: ${{ needs.load-config.outputs.custom_quetz_server }}
-      use_anaconda_server: ${{ needs.load-config.outputs.anaconda_server }}
-      push_conda: 'true'
-      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
-    secrets:
-      CONDA_API_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
-      QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
-      QUETZ_URL: ${{ secrets.QUETZ_URL }}
-
+  
   release_docker:
     needs: [ load-config, interpret_tag ]
     if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
