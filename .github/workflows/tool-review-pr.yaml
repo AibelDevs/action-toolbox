@@ -23,6 +23,27 @@ on:
       pr_review_ok:
         description: 'Is the PR ok'
         value: ${{ jobs.pr-review.outputs.pr_review_ok }}
+      calculated_version:
+        description: "Calculated version"
+        value: ${{ jobs.version_calc.outputs.calculated_version }}
+      release_override_found:
+        description: "Release override found"
+        value: ${{ jobs.version_calc.outputs.release_override_found }}
+      is_release:
+        description: "Is set to 'true' if its a release"
+        value: ${{ jobs.version_calc.outputs.is_release }}
+      issue_str:
+        description: "Issue string"
+        value: ${{ jobs.version_calc.outputs.issue_str }}
+      has_source_key_secret:
+        description: "Is SOURCE_KEY secret set"
+        value: ${{ jobs.lintCheck.outputs.has_source_key_secret }}
+      check_pr_title:
+        description: "Is PR title correct"
+        value: ${{ jobs.lintCheck.outputs.check_pr_title }}
+      check_release_label:
+        description: "Is release label set"
+        value: ${{ jobs.lintCheck.outputs.contains_release_label }}
     secrets:
       SOURCE_KEY:
         required: false
@@ -35,14 +56,318 @@ jobs:
       branch: ${{ inputs.branch }}
 
   pr-version-calculate:
-    uses: ./.github/workflows/tool-pr-version-calculate.yaml
-    with:
-      config_toml_file: ${{ inputs.config_toml_file }}
+    name: Calculate semantic release version
+    runs-on: ubuntu-latest
+    outputs:
+      calculated_version: ${{ steps.calculate_version.outputs.new_version }}
+      release_override_found: ${{ steps.calculate_version.outputs.release_override_found }}
+      is_release: ${{ steps.calculate_version.outputs.is_release }}
+      issue_str: ${{ steps.calculate_version.outputs.issue_str }}
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          fetch-depth: 0
+
+      - name: Add current title as commit for semantic release calculation
+        if: ${{ github.event_name == 'pull_request_target' }} # only run if it's a PR target
+        run: |
+          git config --global user.email "dummy@dummy.com"
+          git config --global user.name "dummy"
+          git commit --allow-empty -m "${{ github.event.pull_request.title }}"
+
+      - name: Set up Python ${{ inputs.python_version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install toml==0.10.2 python-semantic-release==8.5.1
+
+      - name: Get latest release tag
+        shell: python
+        run: |
+          import os
+          import re
+
+          def set_env(name, value):
+            with open(os.environ['GITHUB_ENV'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+
+          # get all tags and filter for semver format with prefix 'v'
+          all_tags = os.popen('git tag').read().splitlines()
+          semver_tags = [tag for tag in all_tags if re.match(r'^v\d+\.\d+\.\d+$', tag)]
+          if semver_tags:
+              latest_semver_tag = semver_tags[-1]
+          else:
+              latest_semver_tag = 'v0.0.0'  # default if no semver tags found
+          
+          set_env("LATEST_RELEASE_TAG", latest_semver_tag)
+
+      - name: Check the calculated version from semantic release
+        shell: python
+        id: calculate_version
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          TOML_FILE: ${{ inputs.config_toml_file }}
+        run: |
+          import subprocess
+          import os
+          import json
+
+          def set_output(name, value):
+              with open(os.environ['GITHUB_OUTPUT'], 'r') as fh:
+                  data = fh.read().strip()
+              with open(os.environ['GITHUB_OUTPUT'], 'w') as fh:
+                  data += f"\n{name}={value}\n"    
+                  fh.write(data)
+          
+          label_names = json.loads(os.environ["LABELS"])
+          rel_labels = {l for l in label_names if l.startswith("release-")}
+          is_pr = "${{ github.event_name == 'pull_request_target' }}"
+          
+          if len(rel_labels) == 0:
+            if is_pr == "true":
+              rel_labels.add("release-skip")
+            else:
+              rel_labels.add("release-auto")
+      
+          # Command to execute
+          command = ["semantic-release", "--config", os.getenv("TOML_FILE"), "--noop", "version"]
+      
+          # verify labels and only run version calculation if its a release
+          # if skip we do not return any version/set is_release to true
+          # if more then one label we do not return any version//set is_release to true
+      
+          release_label_map = {
+              "release-skip": "",
+              "release-auto": "",
+              "release-patch": "--patch",
+              "release-minor": "--minor",
+              "release-major": "--major",
+          }
+      
+          valid_labels = set(release_label_map.keys())
+          release_labels = valid_labels.intersection(rel_labels)
+          num_release_labels_found = len(release_labels) 
+          if num_release_labels_found != 1:
+              print("Multiple release labels found, please only use one release label")
+              # exit, if multiple is set, then something is wrong and we really do not want to do any release
+              set_output("issue_str", "Multiple release labels found, please only use one release label")
+              exit(0)
+      
+          release_label = list(rel_labels)[0]
+          forced_release = release_label_map[release_label]
+          latest_release_tag = os.getenv("LATEST_RELEASE_TAG")
+      
+          # temp debug..
+          print(f"{rel_labels=}")
+          print(f"{num_release_labels_found=}")
+          print(f"{release_label=}")
+          print(f"{forced_release=}")
+          print(f"{latest_release_tag=}")
+      
+          if release_label == "release-skip":
+              # exit if skip release
+              exit(0)
+      
+          if forced_release != "":
+              command.append(forced_release)
+      
+          # debug print
+          print(command)
+      
+          # Running the command and capturing output
+          result = subprocess.run(command, capture_output=True, text=True)
+      
+          # Extracting the output
+          output = result.stdout.strip()
+      
+          # print any errors
+          if result.stderr:
+              print(result.stderr)
+      
+          # The version name should be in the output
+          print(f'Captured Version Name: "{output}"')
+      
+          # Compare current tag with new so we know if its new
+      
+          cur_version = os.getenv("LATEST_RELEASE_TAG")
+          new_version = f"v{output}"
+      
+          # debug print
+          print(f"{cur_version=}")
+          print(f"{new_version=}")
+      
+          if cur_version != new_version:
+            print("New version found")
+            set_output("new_version", output)
+            set_output("release_override_found", forced_release)
+            set_output("is_release", "true")
 
   pr-lint-checker:
-    uses: ./.github/workflows/tool-pr-linter.yaml
-    secrets:
-      SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
+    name: Check Pull Request
+    runs-on: ubuntu-latest
+    outputs:
+      has_source_key_secret: ${{ steps.check-source-key.outputs.has_source_key_secret }}
+      check_pr_title: ${{ steps.check_pr_title.outputs.check_pr_title }}
+      contains_release_label: ${{ steps.check_release_label.outputs.contains_release_label }}
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          fetch-depth: 0
+
+      - name: Set up Python ${{ inputs.python_version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: check if SOURCE_KEY is set as a secret
+        id: check-source-key
+        run: |
+          if [ -z "${{ secrets.SOURCE_KEY }}" ]; then
+            echo "SOURCE_KEY is not set as a secret"
+            echo "has_source_key_secret=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_source_key_secret=true" >> $GITHUB_OUTPUT
+          fi
+
+
+      - name : Check if PR title is ok
+        id: check_pr_title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        shell: python
+        run: |
+          import os
+          
+          pr_title = os.getenv('PR_TITLE')
+          valid_pr_title = ['fix: ', 'fix!: ', 'feat: ', 'feat!: ', 'chore: ']
+          
+          def set_output(name, value):
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+          
+          if pr_title.startswith(tuple(valid_pr_title)):
+            set_output("check_pr_title", "true")
+          else:
+            set_output("check_pr_title", "false")
+
+
+      - name: Read PR labels using python
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        shell: python
+        id: check_release_label
+        run: |
+          import json
+          import os
+          
+          def set_output(name, value):
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+          
+          def set_env(name, value):
+            with open(os.environ['GITHUB_ENV'], 'a') as fh:
+                print(f'{name}={value}', file=fh)
+          
+          label_names = json.loads(os.environ['LABELS'])
+          valid_labels = {'release-auto', 'release-patch', 'release-minor', 'release-major', 'release-skip'}
+          
+          intersect_labels = valid_labels.intersection(label_names)
+          
+          if len(intersect_labels) == 0:
+            set_env("ADD_DEFAULT_LABEL", "true")
+            
+          set_output("contains_release_label", "true")
+
+
+      - name: Add default labels to selection
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Define your labels with associated colors
+            // release -skip is gray, -auto is yellow, -patch is green, -minor is blue, -major is red
+            const labelsWithColors = { 
+              'release-skip': 'b3b3b3', // Gray
+              'release-auto': 'ffff00', // Yellow
+              'release-patch': '00ff00', // Green
+              'release-minor': '0000ff', // Blue
+              'release-major': 'ff0000', // Red
+              'silence-bot': '000000' // Black
+            };
+        
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+        
+            // Function to get all labels in the repository with their colors
+            async function getAllLabelsWithColors() {
+              let allLabels = [];
+              for await (const response of github.paginate.iterator(
+                github.rest.issues.listLabelsForRepo,
+                {
+                  owner: owner,
+                  repo: repo
+                }
+              )) {
+                allLabels.push(...response.data.map(label => ({ name: label.name, color: label.color })));
+              }
+              return allLabels;
+            }
+        
+            // Function to create or update a label in the repository
+            async function createOrUpdateLabel(labelName, color) {
+              await github.rest.issues.createLabel({
+                owner: owner,
+                repo: repo,
+                name: labelName,
+                color: color
+              }).catch(async (error) => {
+                if (error.status === 422) { // Label already exists, update it
+                  await github.rest.issues.updateLabel({
+                    owner: owner,
+                    repo: repo,
+                    name: labelName,
+                    color: color
+                  });
+                } else {
+                  throw error;
+                }
+              });
+            }
+        
+            // Main logic
+            async function run() {
+              const existingLabels = await getAllLabelsWithColors();
+              const existingLabelNames = existingLabels.map(label => label.name);
+        
+              for (const [labelName, color] of Object.entries(labelsWithColors)) {
+                const existingLabel = existingLabels.find(label => label.name === labelName);
+                if (!existingLabelNames.includes(labelName) || (existingLabel && existingLabel.color !== color)) {
+                  await createOrUpdateLabel(labelName, color);
+                }
+              }
+            }
+        
+            run();
+
+
+      - name: If ADD_DEFAULT_LABEL is true, add release-skip label
+        if: env.ADD_DEFAULT_LABEL == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['release-skip']
+            })
 
   pr-review:
     name: Review PR
