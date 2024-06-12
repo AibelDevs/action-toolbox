@@ -3,16 +3,6 @@ name: Default Issue pre-release
 on:
   workflow_call:
     inputs:
-      release_pypi:
-        description: 'Issue Pre-Release to PyPI'
-        required: false
-        type: string
-        default: false
-      release_conda:
-        description: 'Issue Pre-Release to conda'
-        required: false
-        type: string
-        default: false
       release_docker:
         description: 'Issue Pre-Release to docker'
         required: false
@@ -28,22 +18,11 @@ on:
         required: false
         type: string
         default: "patch"
+      branch:
+        description: "pr branch"
+        type: string
     secrets:
       SOURCE_KEY:
-        required: false
-      CONDA_API_TOKEN:
-        required: false
-      PYPI_API_TOKEN:
-        required: false
-      CUSTOM_PYPI_USERNAME:
-        required: false
-      CUSTOM_PYPI_PASSWORD:
-        required: false
-      CUSTOM_PYPI_URL:
-        required: false
-      QUETZ_API_KEY:
-        required: false
-      QUETZ_URL:
         required: false
       CONTAINER_REGISTRY_URL:
         required: false
@@ -62,6 +41,8 @@ permissions:
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
+    with: 
+      branch: ${{ inputs.branch }}
 
   # Add a step to create a patch version "next.run_id"
   bump_version:
@@ -137,34 +118,6 @@ jobs:
           print(current_version)
           set_output('current_version', current_version)
 
-  release_pypi:
-    if: ${{ inputs.release_pypi == 'true' }}
-    needs: [ load-config, bump_version ]
-    uses: ./.github/workflows/tool-release-pip.yaml
-    with:
-      use_custom_pypi: ${{ needs.load-config.outputs.custom_pypi_server }}
-      version_override: ${{ needs.bump_version.outputs.current_version }}
-    secrets:
-      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-      CUSTOM_PYPI_USERNAME: ${{ secrets.CUSTOM_PYPI_USERNAME }}
-      CUSTOM_PYPI_PASSWORD: ${{ secrets.CUSTOM_PYPI_PASSWORD }}
-      CUSTOM_PYPI_URL: ${{ secrets.CUSTOM_PYPI_URL }}
-
-  release_conda:
-    if: ${{ inputs.release_conda == 'true' }}
-    needs: [ load-config, bump_version ]
-    uses: ./.github/workflows/tool-release-conda.yaml
-    with:
-      use_quetz_server: ${{ needs.load-config.outputs.custom_quetz_server }}
-      use_anaconda_server: ${{ needs.load-config.outputs.anaconda_server }}
-      push_conda: "true"
-      version_override: ${{ needs.bump_version.outputs.current_version }}
-      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
-    secrets:
-      CONDA_API_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
-      QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
-      QUETZ_URL: ${{ secrets.QUETZ_URL }}
-
   release_docker:
     if: ${{ inputs.release_docker == 'true' }}
     needs: [bump_version, load-config ]
@@ -172,6 +125,7 @@ jobs:
     with:
       docker_tag_override: ${{ needs.bump_version.outputs.current_version }}
       docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      config_toml_data: ${{ needs.load-config.outputs.config_toml_data }}
       push_docker: "true"
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}

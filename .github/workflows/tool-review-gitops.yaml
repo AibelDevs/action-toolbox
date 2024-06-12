@@ -6,7 +6,11 @@ on:
         description: Python version
         type: string
         required: false
-        default: '3.11'
+        default: "3.11"
+      branch:
+        description: PR Merge Branch Name
+        type: string
+        required: false
     outputs:
       gitops_review_str:
         description: Body of the comment
@@ -25,6 +29,8 @@ on:
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
+    with:
+      branch: ${{ inputs.branch }}
 
   test_gitops:
     uses: ./.github/workflows/tool-release-gitops-update.yaml
@@ -35,6 +41,7 @@ jobs:
       create_run_logs: 'true'
       docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
       gitops_matrix: ${{ needs.load-config.outputs.gitops_matrix }}
+      branch: ${{ inputs.branch }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
       GITOPS_KEY: ${{ secrets.GITOPS_KEY }}
@@ -54,6 +61,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - name: Set up Python ${{ inputs.python_version }}
+        uses: actions/setup-python@v5
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}

@@ -38,6 +38,10 @@ on:
         type: string
         required: false
         default: ""
+      branch:
+        description: PR Merge Branch Name
+        type: string
+        required: false
     outputs:
       update_logs_str:
         description: 'Build logs'
@@ -75,6 +79,7 @@ jobs:
 
       - name: Set up Python ${{ inputs.python_version }}
         if: env.GITOPS_DISABLED != 'true'
+        uses: actions/setup-python@v5
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}
@@ -138,6 +143,7 @@ jobs:
           if "${{ inputs.create_run_logs }}" == 'true':
             # Create a file with the build log. File name should have the github action run id in it to avoid collisions
             gitops_file = "${{ github.workspace }}/build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.name }}.txt"
+            gitops_file = "${{ github.workspace }}/build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.name }}.txt"
             with open(gitops_file, "w") as f:
                 f.write(docker_ref)
 
@@ -162,7 +168,7 @@ jobs:
         continue-on-error: true # Needed to continue in the event the build fails and no build log is found
         with:
           name: build-log-gitops-${{ github.run_id }}-${{ matrix.gitops.name }}
-          path: build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.docker_ref }}.txt
+          path: build_log_gitops_${{ github.run_id }}_${{ matrix.gitops.name }}.txt
 
   summarize_build_logs:
     if: inputs.create_run_logs == 'true'
@@ -175,8 +181,10 @@ jobs:
     steps:
       - name: Download Build Log Artifact
         uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4
         with:
-          name: build-log-${{ github.run_id }}
+          pattern: build-log-gitops-${{ github.run_id }}-*  # Download the build log artifact
+          merge-multiple: true
           path: ${{ env.BUILD_LOG_DIR }}
 
       - name: Review Build Logs and

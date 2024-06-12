@@ -2,6 +2,13 @@
 
 
 
+## v1.4.0 (2024-04-19)
+
+### Feature
+
+* feat: conda self hosted uploads and fix deprecation warnings (#30) ([`f41bc9c`](https://github.com/AibelDevs/action-toolbox/commit/f41bc9c52d82627d760e40485d8e2df128035272))
+
+
 ## v1.3.4 (2023-12-21)
 
 ### Fix

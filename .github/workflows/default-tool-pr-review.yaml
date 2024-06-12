@@ -2,6 +2,15 @@ name: Default Review Pull Request
 
 on:
   workflow_call:
+    inputs:
+      extra_review_str:
+        description: "Extra review string (base64 encoded)"
+        type: string
+        required: false
+      branch: 
+        required: false
+        type: string
+        description: 'PR Branch'
     outputs:
       review_ok:
         description: "Is the PR ok"
@@ -17,20 +26,6 @@ on:
         required: false
       CONTAINER_REGISTRY_PASSWORD:
         required: false
-      CONDA_API_TOKEN:
-        required: false
-      QUETZ_API_KEY:
-        required: false
-      QUETZ_URL:
-        required: false
-      PYPI_API_TOKEN:
-        required: false
-      CUSTOM_PYPI_USERNAME:
-        required: false
-      CUSTOM_PYPI_PASSWORD:
-        required: false
-      CUSTOM_PYPI_URL:
-        required: false
 
 
 permissions:
@@ -41,29 +36,23 @@ permissions:
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
+    with: 
+      branch: ${{ inputs.branch }}
 
   pr-review:
     uses: ./.github/workflows/tool-review-pr.yaml
     needs: load-config
+    with:
+      branch: ${{ inputs.branch }}
     secrets:
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
 
-  python-review:
-    uses: ./.github/workflows/tool-review-python.yaml
-    needs: load-config
-    if: ${{ needs.load-config.outputs.python_enabled == 'true' }}
-    secrets:
-      CONDA_API_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
-      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-      CUSTOM_PYPI_USERNAME: ${{ secrets.CUSTOM_PYPI_USERNAME }}
-      CUSTOM_PYPI_PASSWORD: ${{ secrets.CUSTOM_PYPI_PASSWORD }}
-      CUSTOM_PYPI_URL: ${{ secrets.CUSTOM_PYPI_URL }}
-      QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
-      QUETZ_URL: ${{ secrets.QUETZ_URL }}
-
+  
   docker-review:
     uses: ./.github/workflows/tool-review-docker.yaml
     needs: load-config
+    with:
+      branch: ${{ inputs.branch }}
     if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
@@ -73,6 +62,8 @@ jobs:
   gitops-review:
     uses: ./.github/workflows/tool-review-gitops.yaml
     needs: load-config
+    with:
+      branch: ${{ inputs.branch }}
     if: ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
@@ -81,7 +72,7 @@ jobs:
 
   pr-review-summary:
     name: Generate Pull Request Summary
-    needs: [ load-config, pr-review, python-review, docker-review, gitops-review ]
+    needs: [ load-config, pr-review, docker-review, gitops-review ]
     if: always()
     runs-on: ubuntu-latest
     outputs:
@@ -110,14 +101,17 @@ jobs:
           import os
           import base64
           
+          
           def set_output(name, value, encode_it=False):
-            if encode_it:
-              value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
-            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-                print(f'{name}={value}', file=fh)
+              if encode_it:
+                  value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                  print(f'{name}={value}', file=fh)
+          
           
           def deserialize_str(s):
-            return base64.b64decode(s).decode('utf-8')
+              return base64.b64decode(s).decode('utf-8')
+          
           
           all_checks = []
           review_str = ''
@@ -128,32 +122,34 @@ jobs:
           
           # Python
           if "${{ needs.load-config.outputs.python_enabled }}" == "true":
-            review_str += deserialize_str('${{ needs.python-review.outputs.python_review_str }}')
-            all_checks.append('${{ needs.python-review.outputs.python_review_ok }}' == 'true')
+              review_str += deserialize_str('${{ needs.python-review.outputs.python_review_str }}')
+              all_checks.append('${{ needs.python-review.outputs.python_review_ok }}' == 'true')
           
           # Docker
           if "${{ needs.load-config.outputs.docker_enabled }}" == "true":
-            review_str += deserialize_str('${{ needs.docker-review.outputs.docker_review_str }}')
-            all_checks.append('${{ needs.docker-review.outputs.docker_review_ok }}' == 'true')
+              review_str += deserialize_str('${{ needs.docker-review.outputs.docker_review_str }}')
+              all_checks.append('${{ needs.docker-review.outputs.docker_review_ok }}' == 'true')
           
           # GitOps
           if "${{ needs.load-config.outputs.gitops_enabled }}" == "true":
-            review_str += deserialize_str('${{ needs.gitops-review.outputs.gitops_review_str }}')
-            all_checks.append('${{ needs.gitops-review.outputs.gitops_review_ok }}' == 'true')
+              review_str += deserialize_str('${{ needs.gitops-review.outputs.gitops_review_str }}')
+              all_checks.append('${{ needs.gitops-review.outputs.gitops_review_ok }}' == 'true')
           
           # check if all_checks are true
           if all(all_checks):
-            header = "👋 Hi there! I have checked your PR and found no issues. Thanks for your contribution!\n"
-            set_output('review_ok', 'true')
+              header = "👋 Hi there! I have checked your PR and found no issues. Thanks for your contribution!\n"
+              set_output('review_ok', 'true')
           else:
-            header = "👋 Hi there! I have checked your PR and found the following:\n\n"
-            set_output('review_ok', 'false')
+              header = "👋 Hi there! I have checked your PR and found the following:\n\n"
+              set_output('review_ok', 'false')
+          
+          if "${{ inputs.extra_review_str }}":
+              review_str += deserialize_str('${{ inputs.extra_review_str }}')
           
           body = header + review_str
           
           # Set the output
           set_output('body', body, True)
-          
           print(body)
 
       - name: Check if label "silence-bot" is added
