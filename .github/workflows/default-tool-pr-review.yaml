@@ -65,6 +65,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
+      create_build_logs: 'true'
     if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
