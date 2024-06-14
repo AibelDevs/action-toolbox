@@ -282,7 +282,7 @@ jobs:
 
   summarize_build_logs:
     if: inputs.create_build_logs == 'true'
-    needs: build_docker
+    needs: docker_build_tests
     runs-on: ubuntu-latest
     outputs:
       build_log_summary: ${{ steps.summarize_build_logs.outputs.build_log_summary }}
