@@ -319,7 +319,7 @@ jobs:
 
   docker_review:
     runs-on: ubuntu-latest
-    needs: [ docker_build_tests, docker_prep, load-config ]
+    needs: [ docker_build_tests, docker_prep, load-config, summarize_build_logs ]
     if: always()
     outputs:
       docker_review_str: ${{ steps.comment_body.outputs.body }}
