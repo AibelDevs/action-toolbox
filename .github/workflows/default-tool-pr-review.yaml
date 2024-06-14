@@ -7,6 +7,11 @@ on:
         description: "Extra review string (base64 encoded)"
         type: string
         required: false
+      python_version:
+        description: 'Python version'
+        type: string
+        required: false
+        default: '3.11'
       branch: 
         required: false
         type: string
@@ -15,6 +20,12 @@ on:
       review_ok:
         description: "Is the PR ok"
         value: ${{ jobs.pr-review-summary.outputs.review_ok }}
+      docker_review_str:
+        description: 'Body of the comment'
+        value: ${{ jobs.docker_review.outputs.docker_review_str }}
+      docker_review_ok:
+        description: 'Is the PR ok'
+        value: ${{ jobs.docker_review.outputs.docker_review_ok }}
     secrets:
       SOURCE_KEY:
         required: true
@@ -53,11 +64,13 @@ jobs:
     needs: load-config
     with:
       branch: ${{ inputs.branch }}
+      docker_matrix: ${{ needs.load-config.outputs.docker_matrix }}
     if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
     secrets:
       CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
       CONTAINER_REGISTRY_USERNAME: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
       CONTAINER_REGISTRY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+
 
   gitops-review:
     uses: ./.github/workflows/tool-review-gitops.yaml
