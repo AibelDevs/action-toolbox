@@ -319,7 +319,7 @@ jobs:
 
   docker_review:
     runs-on: ubuntu-latest
-    needs: [ docker_build_tests, docker_prep, load-config, summarize_build_logs ]
+    needs: [ load-config, docker_prep, docker_build_tests, summarize_build_logs ]
     if: always()
     outputs:
       docker_review_str: ${{ steps.comment_body.outputs.body }}
@@ -346,7 +346,8 @@ jobs:
           has_registry_login = '${{ needs.docker_prep.outputs.registry_login_success }}' == 'true'
           
           # Check if docker build was successful or not
-          build_logs = "${{ needs.docker_build_tests.outputs.build_logs_str }}".split(";")
+          # build_logs = "${{ needs.docker_build_tests.outputs.build_logs_str }}".split(";")
+          build_logs = "${{ needs.summarize_build_logs.outputs.build_log_summary }}".split(";")
           
           # Remove empty strings
           build_logs = [x for x in build_logs if x]
