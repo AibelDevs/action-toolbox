@@ -327,7 +327,7 @@ jobs:
           
           # Check if gitops updates dry run was successful or not
           update_logs_ok = '${{ needs.summarize_build_logs.outputs.build_log_ok }}' == 'true' 
-          update_logs_review_str = deserialize_str(b"${{ needs.test_gitops.outputs.update_logs_str }}")
+          update_logs_review_str = deserialize_str(b"${{ needs.summarize_build_logs.outputs.build_log_summary }}")
           
           has_container_registry_acr_url_str = '${{ steps.secrets_check.outputs.has_container_registry_acr_url_secret }}'
           has_gitops_key_str = '${{ steps.secrets_check.outputs.has_gitops_key_secret }}'
