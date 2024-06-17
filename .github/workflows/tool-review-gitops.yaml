@@ -267,7 +267,7 @@ jobs:
 
   review_gitops:
     runs-on: ubuntu-latest
-    needs: [ test_gitops, load-config ]
+    needs: [ test_gitops, load-config, summarize_build_logs ]
     if: always()
     outputs:
       gitops_review_str: ${{ steps.comment_body.outputs.body }}
