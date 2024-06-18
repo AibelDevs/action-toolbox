@@ -4,10 +4,11 @@ name: Default Release on push of new tag
 on:
   workflow_call:
     inputs:
-      branch: 
-        required: false
+      config_toml_file:
+        description: "config file in repo for actions"
         type: string
-        description: 'PR Branch'
+        required: false
+        default: "action_config.toml"
     secrets:
       SOURCE_KEY:
         required: true
