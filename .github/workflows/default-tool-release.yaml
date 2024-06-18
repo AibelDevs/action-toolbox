@@ -9,6 +9,10 @@ on:
         type: string
         required: false
         default: "action_config.toml"
+      branch: 
+        required: false
+        type: string
+        description: 'PR Branch'
     secrets:
       SOURCE_KEY:
         required: true
