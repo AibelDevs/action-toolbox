@@ -3,6 +3,11 @@ name: Default Release on push of new tag
 # triggered on a tagged release
 on:
   workflow_call:
+    inputs:
+      branch: 
+        required: false
+        type: string
+        description: 'PR Branch'
     secrets:
       SOURCE_KEY:
         required: true
@@ -47,7 +52,8 @@ jobs:
 
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
-
+    with: 
+      branch: ${{ inputs.branch }}
   
   release_docker:
     needs: [ load-config, interpret_tag ]
