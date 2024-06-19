@@ -62,6 +62,7 @@ jobs:
 
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
+    needs: interpret_tag
     with: 
       branch: ${{ needs.interpret_tag.outputs.tag_branch }}
   
