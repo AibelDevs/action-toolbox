@@ -74,6 +74,7 @@ jobs:
         id: toml_file
         run: |
           echo ${{ inputs.branch }}
+          pattern="v*"
           if ${{ inputs.branch == 'test' }}; then
             echo "inside test branch"
             echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT
@@ -81,7 +82,8 @@ jobs:
             echo "inside main branch"
             echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
             echo "::set-output name=action_toml_file::action_config.toml"
-          elif [[ "$inputs.branch" == "v*" ]]; then
+          elif [[ "$inputs.branch" == $pattern ]]; then
+            
             echo "inside tag"
             echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
             echo "::set-output name=action_toml_file::action_config.toml"
