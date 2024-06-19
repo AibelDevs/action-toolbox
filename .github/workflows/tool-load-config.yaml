@@ -81,7 +81,7 @@ jobs:
             echo "inside main branch"
             echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
             echo "::set-output name=action_toml_file::action_config.toml"
-          elif [[ "${{ github.ref }}" == "refs/tags/v*" ]]; then
+          elif [[ "${{ github.ref }}" == "refs/tags/*" ]]; then
             echo "inside tag"
             echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
             echo "::set-output name=action_toml_file::action_config.toml"
