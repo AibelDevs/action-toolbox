@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.interpret_tag.outputs.tagged_release }}
-      tag_branch: ${{ steps.interpret_tag.outputs.tagged_branch }}
+      tag_branch: ${{ steps.interpret_tag.outputs.tag_branch }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
           print(f"{tag=}")
           print(f"{tag_branch=}")
           set_output('tagged_release', tag)
-          set_output('tagged_branch', tag_branch)
+          set_output('tag_branch', tag_branch)
 
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml

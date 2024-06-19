@@ -21,6 +21,7 @@ on:
       branch:
         description: "pr branch"
         type: string
+        required: false
     outputs:
       docker_enabled:
         description: 'Is docker enabled'
