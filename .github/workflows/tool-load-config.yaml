@@ -77,7 +77,7 @@ jobs:
           if ${{ inputs.branch == 'test' }}; then
             echo "inside test branch"
             echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT
-          elif ${{ inputs.branch == 'main' || inputs.branch == 'master' || inputs.branch == v* }}; then
+          elif ${{ inputs.branch == 'v*' || inputs.branch == 'main' || inputs.branch == 'master' }}; then
             echo "inside main branch"
             echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
             echo "::set-output name=action_toml_file::action_config.toml"
