@@ -82,7 +82,7 @@ jobs:
         id: toml_file
         run: |
           echo ${{ inputs.branch }}
-          if ${{ inputs.branch == 'test' || inputs.branch != 'main'}}; then
+          if ${{ inputs.branch == 'test' }}; then
             echo "inside test branch"
             echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT
           elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}; then
