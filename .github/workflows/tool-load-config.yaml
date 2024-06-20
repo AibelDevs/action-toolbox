@@ -70,17 +70,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install toml=="0.10.2"
 
-      - name: Assign config toml file for tags
-        if: startsWith(github.ref, 'refs/tags/v*')
-        id: toml_file
+      - name: testing switch
         run: |
-          echo ${{ github.ref }}
-          echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
-          echo "::set-output name=action_toml_file::action_config.toml"
-        
+          case ${{ inputs.branch }} in
+          'test') echo "test" ;;
+          'main') echo "main" ;;
+          esac
       
-      - name: Assign config toml file value for main and other branches
-        if: startsWith(github.ref, 'refs/tags/v*')!=true
+      - name: Assign config toml file value
         id: toml_file
         run: |
           echo ${{ inputs.branch }}
@@ -91,7 +88,14 @@ jobs:
             echo "inside main branch"
             echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
             echo "::set-output name=action_toml_file::action_config.toml"
+          elif [ "${{ github.ref }}" == "refs/tags/*" ]; then
+            echo "inside tag"
+            echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
+            echo "::set-output name=action_toml_file::action_config.toml"
           fi
+
+
+      
 
       - name: Collect config toml
         env:
