@@ -75,7 +75,7 @@ jobs:
           case ${{ inputs.branch }} in
           'test') echo "test" ;;
           'main') echo "main" ;;
-          'v*') echo "inside v" ;;
+          v*) echo "inside v" ;;
           esac
       
       - name: Assign config toml file value
