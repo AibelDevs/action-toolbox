@@ -73,9 +73,15 @@ jobs:
       - name: testing switch
         run: |
           case ${{ inputs.branch }} in
-          'test') echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT ;;
-          'main') echo "::set-output name=action_toml_file::action_config.toml" ;;
-          v*) echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT ;;
+          'test') echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT
+                  echo "::set-output name=action_toml_file::action_config_test.toml"
+                  ;;
+          'main') echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
+                  echo "::set-output name=action_toml_file::action_config.toml"
+                  ;;
+          v*) echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT 
+              echo "::set-output name=action_toml_file::action_config.toml"
+              ;;
           esac
       
            
