@@ -71,6 +71,7 @@ jobs:
           pip install toml=="0.10.2"
 
       - name: testing switch
+        id: toml_file
         run: |
           case ${{ inputs.branch }} in
           'test') echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT
