@@ -73,30 +73,12 @@ jobs:
       - name: testing switch
         run: |
           case ${{ inputs.branch }} in
-          'test') echo "test" ;;
-          'main') echo "main" ;;
-          v*) echo "inside v" ;;
+          'test') echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT ;;
+          'main') echo "::set-output name=action_toml_file::action_config.toml" ;;
+          v*) echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT ;;
           esac
       
-      - name: Assign config toml file value
-        id: toml_file
-        run: |
-          echo ${{ inputs.branch }}
-          if ${{ inputs.branch == 'test' }}; then
-            echo "inside test branch"
-            echo "action_toml_file=action_config_test.toml" >> $GITHUB_OUTPUT
-          elif ${{ inputs.branch == 'main' || inputs.branch == 'master' }}; then
-            echo "inside main branch"
-            echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
-            echo "::set-output name=action_toml_file::action_config.toml"
-          elif [ "${{ github.ref }}" == "refs/tags/*" ]; then
-            echo "inside tag"
-            echo "action_toml_file=action_config.toml" >> $GITHUB_OUTPUT
-            echo "::set-output name=action_toml_file::action_config.toml"
-          fi
-
-
-      
+           
 
       - name: Collect config toml
         env:
