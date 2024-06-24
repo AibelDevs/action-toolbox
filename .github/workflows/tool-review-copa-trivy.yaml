@@ -7,6 +7,10 @@ on:
         type: string
         required: false
         default: "3.11"
+      branch: 
+        required: false
+        type: string
+        description: 'PR Branch'
     outputs:
       gitops_review_str:
         description: "Body of the comment"
@@ -29,7 +33,9 @@ on:
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
-
+    with:
+      branch: ${{ inputs.branch }}
+      
   test_copa:
     uses: ./.github/workflows/tool-copa-trivy-scan.yaml
     needs: load-config
