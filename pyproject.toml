@@ -1,0 +1,55 @@
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "action_tool"
+version = "0.1.0"
+authors = [
+    { name = "AibelDevs", email = "AibelDevs@outlook.com" },
+]
+description = "A Python library for github actions"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Utilities",
+]
+dependencies = [
+  'toml ~= 0.10.2',
+]
+[project.urls]
+"Homepage" = "https://github.com/AibelDevs/action-toolbox"
+"Bug Tracker" = "https://github.com/AibelDevs/action-toolbox/issues"
+
+[project.optional-dependencies]
+tests = [
+  'coverage>=5.0.3',
+  'pytest',
+  'pytest-benchmark[histogram]>=3.2.1',
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["action_tool*"]
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+profile = "black"
+skip = [".pixi"]
+
+[tool.ruff]
+line-length = 120
+ignore = ["E741"]
+exclude = [".pixi/"]
