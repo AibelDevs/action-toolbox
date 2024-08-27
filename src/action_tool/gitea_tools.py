@@ -122,3 +122,23 @@ def get_or_create_gitea_token(gitea_url: str, username: str, password: str, toke
 
     # Create a new token with the desired name
     return get_gitea_token(gitea_url, username, password)
+
+def create_gitea_pull_request(gitea_url: str, owner: str, repo: str, token: str, title: str, head: str, base: str):
+    pr_url = f"{gitea_url}/api/v1/repos/{owner}/{repo}/pulls"
+
+    data = {
+        "title": title,
+        "head": head,
+        "base": base,
+    }
+
+    response = requests.post(
+        pr_url,
+        headers={"Authorization": f"token {token}", "Content-Type": "application/json"},
+        json=data
+    )
+
+    if response.status_code == 201:
+        print(f"Pull request created successfully: {response.json().get('html_url')}")
+    else:
+        raise ValueError(f"Failed to create pull request: {response.status_code} - {response.text}")

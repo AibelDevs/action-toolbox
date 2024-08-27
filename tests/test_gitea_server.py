@@ -1,12 +1,18 @@
+import os
 import pathlib
+import shutil
+import tempfile
 import time
 
 import docker
+import git
 import pytest
 import requests
 from docker.errors import NotFound
 
-from action_tool.gitea_tools import get_gitea_token, create_repository, upload_files_to_repo, get_or_create_gitea_token
+from action_tool.git_helper import GitHelper
+from action_tool.gitea_tools import get_gitea_token, create_repository, upload_files_to_repo, get_or_create_gitea_token, \
+    create_gitea_pull_request
 from action_tool.github_state import is_in_github_action
 from tests.conftest import proj_mono_1
 
@@ -61,6 +67,40 @@ def gitea_container():
 
 
 @pytest.fixture(scope="session")
+def act_runner_container():
+    if is_in_github_action():
+        client = docker.from_env()
+    else:
+        client = docker.DockerClient(base_url='tcp://localhost:2375')
+
+    act_image = "nektos/act-environments-ubuntu:18.04"
+    try:
+        client.images.get(act_image)
+    except NotFound:
+        print("Pulling Act Docker image...")
+        client.images.pull(act_image)
+
+    # Start the act runner container
+    container = client.containers.run(
+        act_image,
+        detach=True,
+        environment={
+            "GITHUB_ACTIONS": "true",
+            "RUNNER_DEBUG": "1"
+        },
+        name="pytest_act_runner",
+        tty=True,
+    )
+
+    time.sleep(10)  # Give the act runner some time to start up
+
+    yield container
+
+    # Clean up after tests
+    container.stop()
+    container.remove()
+
+@pytest.fixture(scope="session")
 def gitea_url():
     return "http://localhost:3000"
 
@@ -100,6 +140,7 @@ def create_dummy_user(gitea_url):
 
     return user_data
 
+
 @pytest.fixture(scope="session")
 def created_token(gitea_url, create_dummy_user):
     return get_gitea_token(gitea_url, create_dummy_user["username"], create_dummy_user["password"])
@@ -107,30 +148,11 @@ def created_token(gitea_url, create_dummy_user):
 
 @pytest.fixture(scope="session")
 def create_fake_repository(gitea_url, create_dummy_user, created_token):
-    session = requests.Session()
-    login_url = f"{gitea_url}/user/login"
-    csrf_token = session.cookies.get("i_like_gitea")
-
-    # Log in as the dummy user
-    session.post(
-        login_url,
-        data={
-            "user_name": create_dummy_user["username"],
-            "password": create_dummy_user["password"],
-            "_csrf": csrf_token,
-        },
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-    )
-
-
-
     # Create a new repository
     repo_data = {
-        "name": "fakerepo",  # Adjust the key to "name" (not "repo_name") as per Gitea API
+        "name": "fakerepo",
         "description": "A fake repository for testing purposes",
-        "private": False,  # Set to True if you want to create a private repo
+        "private": False,
     }
 
     create_repository(repo_data, gitea_url, created_token)
@@ -138,16 +160,57 @@ def create_fake_repository(gitea_url, create_dummy_user, created_token):
     return repo_data
 
 
+@pytest.fixture(scope="session")
+def mock_proj_a(gitea_url, proj_mono_1, create_dummy_user, create_fake_repository) -> pathlib.Path:
+    username = create_dummy_user["username"]
+    password = create_dummy_user["password"]
+    repo_name = create_fake_repository["name"]
+
+    repo_url = f"http://{username}:{password}@{gitea_url.replace('http://', '')}/{username}/{repo_name}.git"
+
+    # Create a temporary directory for the local repository
+    with tempfile.TemporaryDirectory() as local_temp_dir:
+        # Clone a Git repository in the temporary directory
+        local_repo = git.Repo.clone_from(repo_url, local_temp_dir)
+        # Copy the contents of the mono-repo to the temporary directory
+        shutil.copytree(str(proj_mono_1), local_temp_dir, dirs_exist_ok=True)
+        os.environ['GIT_ROOT_DIR'] = local_temp_dir
+
+        curr_branch = local_repo.active_branch
+
+        # Add the username and email
+        local_repo.git.config("user.email", create_dummy_user["email"])
+        local_repo.git.config("user.name", username)
+
+        # Perform any Git-related operations here, e.g., adding and committing files
+        local_repo.git.add(".")
+        local_repo.git.execute(["git", "commit", "-am", "Initial Commit"])
+        local_repo.git.push("origin", curr_branch.name, set_upstream=True)
+        yield pathlib.Path(local_temp_dir)
+
+
 def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_repository):
     assert gitea_container.status == "created"
     assert requests.get(gitea_url).status_code == 200
     print("Gitea setup and tests passed successfully.")
 
-def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token):
-    proj_mono_1 = pathlib.Path(__file__).parent.absolute() / "files/proj_mono_1"
-    files = dict()
-    for fp in proj_mono_1.rglob(".*"):
-        fp_rel = fp.relative_to(proj_mono_1)
-        files[fp_rel.as_posix()] = "auto-commited"
 
-    upload_files_to_repo(gitea_url, create_dummy_user["username"], create_fake_repository["name"], created_token, files, "initial commit")
+def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token,
+                      mock_proj_a):
+    git_helper = GitHelper(mock_proj_a)
+
+    git_helper.create_branch("feat/new-stuff", push=True)
+
+    # Add a dummy file
+    with open(mock_proj_a / "src/packages/a_sample_project/new_file.txt", "w") as f:
+        f.write("This is a new file.")
+    git_helper.commit("I'm adding a new file.")
+    git_helper.push()
+
+    username = create_dummy_user["username"]
+    repo_name = create_fake_repository["name"]
+
+    # make a PR
+    create_gitea_pull_request(gitea_url, username, repo_name, created_token, "feat: new-stuff","feat/new-stuff", "main")
+
+    print("Gitea upload tests passed successfully.")

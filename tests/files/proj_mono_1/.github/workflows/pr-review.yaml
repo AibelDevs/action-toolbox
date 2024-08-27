@@ -1,0 +1,26 @@
+name: Review Pull Request
+
+on:
+  pull_request_target:
+    types: [ opened, synchronize, edited, unlabeled ]
+    branches:
+      - main
+      - develop
+
+permissions:
+  pull-requests: write
+  contents: write
+
+# Use concurrency to ensure that only one instance of this workflow is running at a time
+concurrency:
+  group: pr-lint-checker-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    uses: AibelDevs/action-toolbox/.github/workflows/default-tool-pr-review-monorepo.yaml@feat/monorepo-support
+    secrets:
+      SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
+    with:
+      tool_repo: AibelDevs/action-toolbox
+      tool_branch: feat/monorepo-support
