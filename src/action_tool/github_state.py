@@ -1,16 +1,30 @@
 from action_tool.load_config import load_config
 from dotenv import load_dotenv
 
+from action_tool.utils import set_output
+
 load_dotenv()
 
+import github.Repository
 from github import Github
 from github.GithubException import GithubException
 import os
 
-# GitHub repository information
-token = os.getenv('GITHUB_TOKEN')
-owner = os.getenv('GITHUB_REPOSITORY_OWNER')
-repo_name = os.getenv('GITHUB_REPOSITORY')
+
+def is_in_github_action():
+    return os.getenv('GITHUB_ACTIONS') == "true"
+
+
+def get_repo() -> github.Repository.Repository:
+    # GitHub repository information
+    token = os.getenv('GITHUB_TOKEN')
+    owner = os.getenv('GITHUB_REPOSITORY_OWNER')
+    repo_name = os.getenv('GITHUB_REPOSITORY')
+
+    # Authenticate to GitHub
+    g = Github(token)
+    repo = g.get_repo(f"{owner}/{repo_name}")
+    return repo
 
 
 def rainbow_colors_generator():
@@ -31,14 +45,11 @@ def rainbow_colors_generator():
 
 def set_labels_if_not_already_created(label_names: list[str]):
     # Define your labels with colors. Use rainbow colors for now.
+    repo = get_repo()
     labels_with_colors = {}
     for label_name in label_names:
         color = rainbow_colors_generator()
         labels_with_colors[label_name] = next(color)
-
-    # Authenticate to GitHub
-    g = Github(token)
-    repo = g.get_repo(f"{owner}/{repo_name}")
 
     existing_labels = get_all_labels_with_colors(repo)
 
@@ -67,18 +78,57 @@ def create_or_update_label(repo, label_name, color):
             raise e
 
 
-# Main logic
-def run():
-    # Authenticate to GitHub
-    g = Github(token)
-    repo = g.get_repo(f"{owner}/{repo_name}")
+def check_silence_bot_label(pull_request):
+    """
+    Check if the label 'silence-bot' is added to the pull request.
 
-    existing_labels = get_all_labels_with_colors(repo)
-
-    for label_name, color in labels_with_colors.items():
-        if label_name not in existing_labels or existing_labels[label_name] != color:
-            create_or_update_label(repo, label_name, color)
+    :param pull_request: Pull request object from PyGithub.
+    :return: Boolean indicating if 'silence-bot' label is present.
+    """
+    labels = [label.name for label in pull_request.get_labels()]
+    return 'silence-bot' in labels
 
 
-if __name__ == "__main__":
-    run()
+def delete_previous_bot_comment(repo, pull_request):
+    """
+    Delete the last comment made by the bot on the pull request.
+
+    :param repo: Repository object from PyGithub.
+    :param pull_request: Pull request object from PyGithub.
+    """
+    comments = pull_request.get_issue_comments()
+    bot_comment = None
+
+    for comment in reversed(list(comments)):
+        if comment.user.login == 'github-actions[bot]':
+            bot_comment = comment
+            break
+
+    if bot_comment:
+        bot_comment.delete()
+
+
+def comment_on_pr(repo, pull_request, body):
+    """
+    Comment on the pull request.
+
+    :param repo: Repository object from PyGithub.
+    :param pull_request: Pull request object from PyGithub.
+    :param body: The comment body as a string.
+    """
+    pull_request.create_issue_comment(body)
+
+
+def finalize_pr_review(body: str):
+    repo = get_repo()
+    pull_request = repo.get_pull(int(os.getenv('PR_NUMBER')))
+
+    silence_bot = check_silence_bot_label(pull_request)
+    set_output('silence_bot', str(silence_bot).lower())
+
+    if silence_bot:
+        print("Silence bot label found, skipping comment.")
+    else:
+        delete_previous_bot_comment(repo, pull_request)
+
+        comment_on_pr(repo, pull_request, body)

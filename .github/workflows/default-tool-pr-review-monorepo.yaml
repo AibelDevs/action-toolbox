@@ -101,7 +101,6 @@ jobs:
           
           check_monorepo_labels()
 
-
   pr-review:
     uses: ./.github/workflows/tool-review-pr.yaml
     needs: load-config
@@ -158,144 +157,47 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install toml==0.10.2
+          python-version: 3.12
 
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Checkout Tool
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.tool_repo }}
+          path: action_tool
+          ref: ${{ inputs.tool_branch }}
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          pip install .
+        working-directory: action_tool
 
       - name: Review all results and write a summary
         id: comment_body
         shell: python
-        run: |
-          import os
-          import base64
-          
-          
-          def set_output(name, value, encode_it=False):
-              if encode_it:
-                  value = base64.b64encode(value.encode('utf-8')).decode('utf-8')
-              with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-                  print(f'{name}={value}', file=fh)
-          
-          
-          def deserialize_str(s):
-              return base64.b64decode(s).decode('utf-8')
-          
-          
-          all_checks = []
-          review_str = ''
-          
-          # PR
-          review_str += deserialize_str('${{ needs.pr-review.outputs.pr_review_str }}')
-          all_checks.append('${{ needs.pr-review.outputs.pr_review_ok }}' == 'true')
-          
-          # Python
-          if "${{ needs.load-config.outputs.python_enabled }}" == "true":
-              review_str += deserialize_str('${{ needs.python-review.outputs.python_review_str }}')
-              all_checks.append('${{ needs.python-review.outputs.python_review_ok }}' == 'true')
-          if os.getenv('
-          
-          # Docker
-          if "${{ needs.load-config.outputs.docker_enabled }}" == "true":
-              review_str += deserialize_str('${{ needs.docker-review.outputs.docker_review_str }}')
-              all_checks.append('${{ needs.docker-review.outputs.docker_review_ok }}' == 'true')
-          
-          # GitOps
-          if "${{ needs.load-config.outputs.gitops_enabled }}" == "true":
-              review_str += deserialize_str('${{ needs.gitops-review.outputs.gitops_review_str }}')
-              all_checks.append('${{ needs.gitops-review.outputs.gitops_review_ok }}' == 'true')
-          
-          # check if all_checks are true
-          if all(all_checks):
-              header = "👋 Hi there! I have checked your PR and found no issues. Thanks for your contribution!\n"
-              set_output('review_ok', 'true')
-          else:
-              header = "👋 Hi there! I have checked your PR and found the following:\n\n"
-              set_output('review_ok', 'false')
-          
-          if "${{ inputs.extra_review_str }}":
-              review_str += deserialize_str('${{ inputs.extra_review_str }}')
-          
-          body = header + review_str
-          
-          # Set the output
-          set_output('body', body, True)
-          print(body)
-
-      - name: Check if label "silence-bot" is added
-        id: silence_bot
         env:
-          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
-        shell: python
+          PR_REVIEW_STR: ${{ needs.pr-review.outputs.pr_review_str }}
+          PR_REVIEW_OK: ${{ needs.pr-review.outputs.pr_review_ok }}
+          PYTHON_ENABLED: ${{ needs.load-config.outputs.python_enabled }}
+          PYTHON_REVIEW_STR: ${{ needs.python-review.outputs.python_review_str }}
+          PYTHON_REVIEW_OK: ${{ needs.python-review.outputs.python_review_ok }}
+          DOCKER_ENABLED: ${{ needs.load-config.outputs.docker_enabled }}
+          DOCKER_REVIEW_STR: ${{ needs.docker-review.outputs.docker_review_str }}
+          DOCKER_REVIEW_OK: ${{ needs.docker-review.outputs.docker_review_ok }}
+          GITOPS_ENABLED: ${{ needs.load-config.outputs.gitops_enabled }}
+          GITOPS_REVIEW_STR: ${{ needs.gitops-review.outputs.gitops_review_str }}
+          GITOPS_REVIEW_OK: ${{ needs.gitops-review.outputs.gitops_review_ok }}
+          EXTRA_REVIEW_STR: ${{ inputs.extra_review_str }}
         run: |
-          import os
-          import json
+          from action_tool.pr_review import perform_pr_final_review
           
-          def set_output(name, value):
-            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-                print(f'{name}={value}', file=fh)
-          
-          
-          # Check if label "silence-bot" is added
-          labels = json.loads(os.environ['LABELS'])
-          silence_bot = False
-          for label in labels:
-            if label == 'silence-bot':
-              silence_bot = True
-          
-          set_output('silence_bot', silence_bot)
-          
-          print(f'{silence_bot=}')
-
-      - name: Delete previous bot comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issue_number = context.issue.number
-            const owner = context.repo.owner
-            const repo = context.repo.repo
-            
-            // List all comments on the PR
-            const comments = await github.rest.issues.listComments({
-              issue_number,
-              owner,
-              repo
-            });
-            
-            // Find the last comment made by the bot
-            const botComment = comments.data.reverse().find(comment => comment.user.login === 'github-actions[bot]');
-            
-            // If a previous comment by the bot exists, delete it
-            if (botComment) {
-              await github.rest.issues.deleteComment({
-                owner,
-                repo,
-                comment_id: botComment.id
-              });
-            }
-
-      - name: Comment on PR
-        if: steps.silence_bot.outputs.silence_bot == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const bodyBase64 = '${{ steps.comment_body.outputs.body }}'
-            const body = Buffer.from(bodyBase64, 'base64').toString('utf-8')
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            })
+          perform_pr_final_review()
 
       - name: Fail if linting failed
         if: steps.comment_body.outputs.review_ok == 'false'
