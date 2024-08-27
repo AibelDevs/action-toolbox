@@ -25,8 +25,9 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-  'toml ~= 0.10.2',
-  'PyGithub ~= 2.4.0',
+    'toml ~= 0.10.2',
+    'PyGithub ~= 2.4.0',
+    'python-dotenv ~= 1.0.1'
 ]
 [project.urls]
 "Homepage" = "https://github.com/AibelDevs/action-toolbox"
@@ -34,9 +35,9 @@ dependencies = [
 
 [project.optional-dependencies]
 tests = [
-  'coverage>=5.0.3',
-  'pytest',
-  'pytest-benchmark[histogram]>=3.2.1',
+    'coverage>=5.0.3',
+    'pytest',
+    'pytest-benchmark[histogram]>=3.2.1',
 ]
 
 [tool.setuptools.packages.find]
