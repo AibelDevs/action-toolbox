@@ -1,12 +1,39 @@
 import json
 import os
-
+import pathlib
+from dataclasses import dataclass, field
 import toml
 
 from action_tool.utils import set_output
 
 
-def load_config():
+@dataclass
+class MonoRepo:
+    name: str
+    enabled: bool
+    path: pathlib.Path
+    config_file: pathlib.Path
+
+
+@dataclass
+class ActionContext:
+    config_toml_file: pathlib.Path
+    config_toml_data: dict
+
+    mono_repo_enabled: bool
+    docker_enabled: bool
+    gitops_enabled: bool
+    python_enabled: bool
+    pip_enabled: bool
+    conda_enabled: bool
+    custom_pypi_server: bool
+    custom_quetz_server: bool
+    anaconda_server: bool
+
+    mono_repo_project: list[MonoRepo] = field(default_factory=list)
+
+
+def load_config() -> ActionContext:
     data = toml.load(os.getenv("CONFIG_TOML_FILE"))
     set_output("toml_data", json.dumps(data), True)
 
@@ -41,6 +68,11 @@ def load_config():
     python_enabled = py_tool.get("enabled", False)
     set_output("python_enabled", python_enabled)
 
+    pip_enabled = False
+    conda_enabled = False
+    custom_pypi_server = False
+    custom_quetz_server = False
+    anaconda_server = False
     if python_enabled:
         pip_tool = py_tool.get("pip", dict(enabled=False))
         pip_enabled = pip_tool.get("enabled", False)
@@ -61,4 +93,30 @@ def load_config():
             anaconda_server = conda_tool.get("use_anaconda_server", False)
             set_output("anaconda_server", anaconda_server)
 
+    mono_repos_data = data["tool"]["mono_repo"]["project"]
+    mono_repo_enabled = False
+    mono_repo_project = []
+    for mono_repo in mono_repos_data:
+        mono_repo_enabled = mono_repo.get("enabled", False)
+        mono_repo_project.append(MonoRepo(
+            name=mono_repo["name"],
+            enabled=mono_repo_enabled,
+            path=pathlib.Path(mono_repo["path"]),
+            config_file=pathlib.Path(mono_repo["config_file"])
+        ))
+
     print(data)
+    return ActionContext(
+        config_toml_file=os.getenv("CONFIG_TOML_FILE"),
+        config_toml_data=data,
+        mono_repo_enabled=mono_repo_enabled,
+        docker_enabled=docker_enabled,
+        gitops_enabled=gitops_enabled,
+        python_enabled=python_enabled,
+        pip_enabled=pip_enabled,
+        conda_enabled=conda_enabled,
+        custom_pypi_server=custom_pypi_server,
+        custom_quetz_server=custom_quetz_server,
+        anaconda_server=anaconda_server,
+        mono_repo_project=mono_repo_project
+    )

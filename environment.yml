@@ -6,6 +6,7 @@ dependencies:
   - pytest
   - python-dotenv
   - toml==0.10.2
+  - PyGithub
   - pip
   - pip:
       - -e .

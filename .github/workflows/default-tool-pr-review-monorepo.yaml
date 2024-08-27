@@ -7,7 +7,14 @@ on:
         description: "Extra review string (base64 encoded)"
         type: string
         required: false
-
+      tool_repo:
+        description: "Tool repository"
+        type: string
+        required: true
+      tool_branch:
+        description: "Tool branch"
+        type: string
+        required: true
     outputs:
       review_ok:
         description: "Is the PR ok"
@@ -49,7 +56,7 @@ jobs:
   load-config:
     runs-on: ubuntu-latest
     outputs:
-      config_toml_file: ${{ steps.check-load-config.outputs.config_toml_file }}
+      config_toml_file: ${{ steps.check-load-config.outputs.MONO_CONFIG_FILE }}
     steps:
       - name: print github context
         run: |
@@ -70,7 +77,6 @@ jobs:
           ref: feat/monorepo-support  # This refers to the branch the workflow is being called from (e.g., feat/monorepo-support)
           fetch-depth: 0
 
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -85,104 +91,9 @@ jobs:
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         shell: python
         run: |
-          import json
-          import os
-          import base64
+          from action_tool.monorepos import check_monorepo_labels
           
-          def deserialize_str(s):
-              return base64.b64decode(s).decode('utf-8')
-          
-          toml_data = json.loads(deserialize_str(b"${{ needs.load-config.outputs.config_toml_data }}"))
-          
-          def set_output(name, value):
-            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-                print(f'{name}={value}', file=fh)
-          
-          def set_env(name, value):
-            with open(os.environ['GITHUB_ENV'], 'a') as fh:
-                print(f'{name}={value}', file=fh)
-          
-          label_names = json.loads(os.environ['LABELS'])
-          // read 
-          valid_labels_dict = {'ai-gene-standalone': 'src/nugets/Ai.Gene.Standalone/.semver.toml'}
-          valid_labels = set(valid_labels_dict.keys())
-          
-          intersect_labels = valid_labels.intersection(label_names)
-          
-          if len(intersect_labels) == 0:
-            set_env("ADD_DEFAULT_LABEL", "true")
-          elif len(intersect_labels) == 1:
-            pass
-          else:
-            raise ValueError(f"Multiple valid labels found: {intersect_labels}. You can only choose 1")
-          
-          set_output("config_toml_file", valid_labels_dict[intersect_labels.pop()])
-
-      - name: Add default labels to selection
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // Define your labels with associated colors
-            // release -skip is gray, -auto is yellow, -patch is green, -minor is blue, -major is red
-            const labelsWithColors = {
-              'ai-gene-standalone': 'ffff00', // Yellow
-            };
-            
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            
-            // Function to get all labels in the repository with their colors
-            async function getAllLabelsWithColors() {
-              let allLabels = [];
-              for await (const response of github.paginate.iterator(
-                github.rest.issues.listLabelsForRepo,
-                {
-                  owner: owner,
-                  repo: repo
-                }
-              )) {
-                allLabels.push(...response.data.map(label => ({ name: label.name, color: label.color })));
-              }
-              return allLabels;
-            }
-            
-            // Function to create or update a label in the repository
-            async function createOrUpdateLabel(labelName, color) {
-              await github.rest.issues.createLabel({
-                owner: owner,
-                repo: repo,
-                name: labelName,
-                color: color
-              }).catch(async (error) => {
-                if (error.status === 422) { // Label already exists, update it
-                  await github.rest.issues.updateLabel({
-                    owner: owner,
-                    repo: repo,
-                    name: labelName,
-                    color: color
-                  });
-                } else {
-                  throw error;
-                }
-              });
-            }
-            
-            // Main logic
-            async function run() {
-              const existingLabels = await getAllLabelsWithColors();
-              const existingLabelNames = existingLabels.map(label => label.name);
-            
-              for (const [labelName, color] of Object.entries(labelsWithColors)) {
-                const existingLabel = existingLabels.find(label => label.name === labelName);
-                if (!existingLabelNames.includes(labelName) || (existingLabel && existingLabel.color !== color)) {
-                  await createOrUpdateLabel(labelName, color);
-                }
-              }
-            }
-            
-            run();
-
-
+          check_monorepo_labels()
 
 
   pr-review:

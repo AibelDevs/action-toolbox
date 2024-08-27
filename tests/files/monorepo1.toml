@@ -1,5 +1,0 @@
-[[tool.mono_repo]]
-enabled = true
-name = "a-sample-project"
-path = "src/packages/A.Sample.Project"
-config_file = "src/packages/A.Sample.Project/.semver.toml"

@@ -1,0 +1,11 @@
+[[tool.mono_repo.project]]
+enabled = true
+name = "a-sample-project"
+path = "src/packages/a_sample_project"
+config_file = "src/packages/a_sample_project/.semver.toml"
+
+[[tool.mono_repo.project]]
+enabled = true
+name = "b-sample-project"
+path = "src/packages/b_sample_project"
+config_file = "src/packages/b_sample_project/.semver.toml"
