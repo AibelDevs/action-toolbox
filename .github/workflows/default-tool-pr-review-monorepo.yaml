@@ -61,7 +61,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.REPO_NAME }}
-          path: tool
+          path: action_tool
           ref: ${{ env.BRANCH_NAME }}
           fetch-depth: 0
 
@@ -77,7 +77,7 @@ jobs:
           python-version: 3.12
 
       - run: pip install .
-        working-directory: _tool
+        working-directory: action_tool
 
       - name: Check Main config
         id: check-load-config
