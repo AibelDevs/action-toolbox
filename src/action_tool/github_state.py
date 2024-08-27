@@ -13,12 +13,38 @@ owner = os.getenv('GITHUB_REPOSITORY_OWNER')
 repo_name = os.getenv('GITHUB_REPOSITORY')
 
 
-def get_labels():
-    load_config()
-    # Define your labels with associated colors
-    labels_with_colors = {
-        'ai-gene-standalone': 'ffff00',  # Yellow
-    }
+def rainbow_colors_generator():
+    """Once exhausted, this generator will start from the beginning."""
+    rainbow_colors = [
+        "FF0000",  # Red
+        "FF7F00",  # Orange
+        "FFFF00",  # Yellow
+        "00FF00",  # Green
+        "0000FF",  # Blue
+        "4B0082",  # Indigo
+        "9400D3",  # Violet
+    ]
+    while True:
+        for color in rainbow_colors:
+            yield color
+
+
+def set_labels_if_not_already_created(label_names: list[str]):
+    # Define your labels with colors. Use rainbow colors for now.
+    labels_with_colors = {}
+    for label_name in label_names:
+        color = rainbow_colors_generator()
+        labels_with_colors[label_name] = next(color)
+
+    # Authenticate to GitHub
+    g = Github(token)
+    repo = g.get_repo(f"{owner}/{repo_name}")
+
+    existing_labels = get_all_labels_with_colors(repo)
+
+    for label_name, color in labels_with_colors.items():
+        if label_name not in existing_labels or existing_labels[label_name] != color:
+            create_or_update_label(repo, label_name, color)
 
 
 # Function to get all labels in the repository with their colors
