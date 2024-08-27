@@ -60,7 +60,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: AibelDevs/action-toolbox
-          path: action_tool
+          path: /home/runner/work/action_tool
           ref: feat/monorepo-support  # This refers to the branch the workflow is being called from (e.g., feat/monorepo-support)
           fetch-depth: 0
 
@@ -76,7 +76,7 @@ jobs:
           python-version: 3.12
 
       - run: pip install .
-        working-directory: ${{ github.workspace }}/action_tool
+        working-directory: /home/runner/work/action_tool
 
       - name: Check Main config
         id: check-load-config
