@@ -27,7 +27,8 @@ classifiers = [
 dependencies = [
     'toml ~= 0.10.2',
     'PyGithub ~= 2.4.0',
-    'python-dotenv ~= 1.0.1'
+    'python-dotenv ~= 1.0.1',
+    'python-semantic-release ~= 9.8.7'
 ]
 [project.urls]
 "Homepage" = "https://github.com/AibelDevs/action-toolbox"

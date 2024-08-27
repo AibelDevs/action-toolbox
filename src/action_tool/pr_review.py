@@ -20,12 +20,12 @@ def perform_pr_final_review():
     # Docker
     if os.getenv('DOCKER_ENABLED', 'false') == 'true':
         review_str += deserialize_str(os.getenv('DOCKER_REVIEW_STR', ''))
-    all_checks.append(os.getenv('DOCKER_REVIEW_OK', 'false') == 'true')
+        all_checks.append(os.getenv('DOCKER_REVIEW_OK', 'false') == 'true')
 
     # GitOps
     if os.getenv('GITOPS_ENABLED', 'false') == 'true':
         review_str += deserialize_str(os.getenv('GITOPS_REVIEW_STR', ''))
-    all_checks.append(os.getenv('GITOPS_REVIEW_OK', 'false') == 'true')
+        all_checks.append(os.getenv('GITOPS_REVIEW_OK', 'false') == 'true')
 
     # check if all_checks are true
     if all(all_checks):
@@ -45,6 +45,3 @@ def perform_pr_final_review():
 
     if is_in_github_action():
         finalize_pr_review(body)
-
-
-

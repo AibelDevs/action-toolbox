@@ -16,4 +16,4 @@ def set_output(name, value, encode_it=False):
 
 def get_output() -> dict:
     output_vars = pathlib.Path(os.getenv('GITHUB_OUTPUT')).read_text()
-    return dict(line.strip().split('=') for line in output_vars.splitlines() if line and not line.startswith('#'))
+    return dict(line.strip().split('=', 1) for line in output_vars.splitlines() if line and not line.startswith('#'))
