@@ -16,14 +16,24 @@ def is_in_github_action():
 
 
 def get_repo() -> github.Repository.Repository:
-    # GitHub repository information
-    token = os.getenv('GITHUB_TOKEN')
-    owner = os.getenv('GITHUB_REPOSITORY_OWNER')
-    repo_name = os.getenv('GITHUB_REPOSITORY')
+    if is_in_github_action():
+        # In GitHub Actions, these environment variables should already be set.
+        token = os.getenv('GITHUB_TOKEN')
+        repo_full_name = os.getenv('GITHUB_REPOSITORY')  # This is in the form 'owner/repo'
+    else:
+        # Local environment or other CI environments
+        token = os.getenv('GITHUB_TOKEN')
+        owner = os.getenv('GITHUB_REPOSITORY_OWNER')
+        repo_name = os.getenv('GITHUB_REPOSITORY_NAME')
+        repo_full_name = f"{owner}/{repo_name}"
+
+    if not token or not repo_full_name:
+        raise ValueError("GitHub token or repository information is missing!")
 
     # Authenticate to GitHub
     g = Github(token)
-    repo = g.get_repo(f"{owner}/{repo_name}")
+    repo = g.get_repo(repo_full_name)
+
     return repo
 
 
