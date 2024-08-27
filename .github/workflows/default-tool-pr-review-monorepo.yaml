@@ -24,6 +24,9 @@ on:
       review_ok:
         description: "Is the PR ok"
         value: ${{ jobs.pr-review-summary.outputs.review_ok }}
+      config_toml_file:
+        description: "Mono config toml file path"
+        value: ${{ jobs.pr-review-summary.outputs.review_ok }}
 
     secrets:
       SOURCE_KEY:
@@ -64,11 +67,6 @@ jobs:
     outputs:
       config_toml_file: ${{ steps.check-load-config.outputs.MONO_CONFIG_FILE }}
     steps:
-      - name: print github context
-        run: |
-          echo "${{ github.action_repository }}"
-          echo "${{ github.action_ref }}"
-
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
