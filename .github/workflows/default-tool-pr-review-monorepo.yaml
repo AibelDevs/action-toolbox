@@ -54,9 +54,9 @@ jobs:
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository }}
+          repository: AibelDevs/action-toolbox
           path: _tool
-          ref: ${{ github.ref }}  # This refers to the branch the workflow is being called from (e.g., feat/monorepo-support)
+          ref: feat/monorepo-support  # This refers to the branch the workflow is being called from (e.g., feat/monorepo-support)
           fetch-depth: 0
 
       - name: Checkout PR
