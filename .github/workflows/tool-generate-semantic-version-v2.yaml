@@ -22,6 +22,14 @@ on:
         type: string
         required: false
         default: ""
+      tool_repo:
+        description: "Tool repository"
+        type: string
+        required: true
+      tool_branch:
+        description: "Tool branch"
+        type: string
+        required: true
     secrets:
       SOURCE_KEY:
         required: false

@@ -8,6 +8,7 @@ dependencies:
   - python-semantic-release
   - toml==0.10.2
   - PyGithub
+  - docker-py
   - pip
   - pip:
       - -e .
