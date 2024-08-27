@@ -77,9 +77,9 @@ jobs:
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.event.inputs.tool_repo }}
+          repository: ${{ inputs.tool_repo }}
           path: action_tool
-          ref: ${{ github.event.inputs.tool_branch }}
+          ref: ${{ inputs.tool_branch }}
           fetch-depth: 0
 
       - name: Set up Python
