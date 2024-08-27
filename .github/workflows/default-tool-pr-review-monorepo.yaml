@@ -57,6 +57,7 @@ permissions:
   contents: write
 
 
+
 jobs:
   load-config:
     runs-on: ubuntu-latest
@@ -95,6 +96,8 @@ jobs:
         env:
           CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         shell: python
         run: |
           from action_tool.monorepos import check_monorepo_labels
@@ -194,6 +197,8 @@ jobs:
           GITOPS_REVIEW_STR: ${{ needs.gitops-review.outputs.gitops_review_str }}
           GITOPS_REVIEW_OK: ${{ needs.gitops-review.outputs.gitops_review_ok }}
           EXTRA_REVIEW_STR: ${{ inputs.extra_review_str }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           from action_tool.pr_review import perform_pr_final_review
           
