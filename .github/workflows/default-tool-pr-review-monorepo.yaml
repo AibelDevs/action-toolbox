@@ -15,6 +15,11 @@ on:
         description: "Tool branch"
         type: string
         required: true
+      config_toml_file:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
     outputs:
       review_ok:
         description: "Is the PR ok"
@@ -72,9 +77,9 @@ jobs:
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
-          repository: AibelDevs/action-toolbox
+          repository: ${{ github.event.inputs.tool_repo }}
           path: action_tool
-          ref: feat/monorepo-support  # This refers to the branch the workflow is being called from (e.g., feat/monorepo-support)
+          ref: ${{ github.event.inputs.tool_branch }}
           fetch-depth: 0
 
       - name: Set up Python
@@ -88,6 +93,7 @@ jobs:
       - name: Check Main config
         id: check-load-config
         env:
+
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         shell: python
         run: |
