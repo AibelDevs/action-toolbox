@@ -93,7 +93,7 @@ jobs:
       - name: Check Main config
         id: check-load-config
         env:
-
+          CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
         shell: python
         run: |
