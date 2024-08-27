@@ -12,17 +12,36 @@ from docker.errors import NotFound
 
 from action_tool.git_helper import GitHelper
 from action_tool.gitea_tools import get_gitea_token, create_repository, upload_files_to_repo, get_or_create_gitea_token, \
-    create_gitea_pull_request
+    create_gitea_pull_request, get_runner_registration_token
 from action_tool.github_state import is_in_github_action
 from tests.conftest import proj_mono_1
 
-
-@pytest.fixture(scope="session")
-def gitea_container():
+def get_docker_env():
     if is_in_github_action():
         client = docker.from_env()
     else:
         client = docker.DockerClient(base_url='tcp://localhost:2375')
+    return client
+
+@pytest.fixture(scope="session")
+def docker_network():
+    client = get_docker_env()
+
+    # Create a network if it doesn't exist
+    network_name = "gitea_network"
+    try:
+        network = client.networks.get(network_name)
+    except docker.errors.NotFound:
+        network = client.networks.create(network_name, driver="bridge")
+
+    yield network
+
+    # Optionally remove the network after the tests
+    network.remove()
+
+@pytest.fixture(scope="session")
+def gitea_container(docker_network):
+    client = get_docker_env()
 
     # Pull the latest Gitea image if not present
     try:
@@ -54,6 +73,7 @@ def gitea_container():
             "pytest_gitea_volume": {"bind": "/data", "mode": "rw"}
         },
         name="pytest_gitea",
+        network=docker_network.name
     )
 
     time.sleep(10)  # Give Gitea some time to start up
@@ -67,38 +87,49 @@ def gitea_container():
 
 
 @pytest.fixture(scope="session")
-def act_runner_container():
-    if is_in_github_action():
-        client = docker.from_env()
-    else:
-        client = docker.DockerClient(base_url='tcp://localhost:2375')
+def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, docker_network):
+    client = get_docker_env()
 
-    act_image = "nektos/act-environments-ubuntu:18.04"
+    dockerfile_path = pathlib.Path(__file__).parent.absolute() / "files/runner.Dockerfile"
+    # Docker image for the GitHub Actions runner
+    runner_image = "my-gitea-runner:latest"
+
+    # Build the runner image if it's not available locally
     try:
-        client.images.get(act_image)
-    except NotFound:
-        print("Pulling Act Docker image...")
-        client.images.pull(act_image)
+        client.images.get(runner_image)
+    except docker.errors.ImageNotFound:
+        print(f"Building {runner_image}...")
+        client.images.build(path=dockerfile_path.parent.as_posix(), dockerfile=dockerfile_path.as_posix(), tag=runner_image)
 
-    # Start the act runner container
+    runner_token = get_runner_registration_token(gitea_url, create_dummy_user["username"], create_dummy_user["password"])
+
+    # Start the Gitea runner container
     container = client.containers.run(
-        act_image,
+        runner_image,
         detach=True,
         environment={
-            "GITHUB_ACTIONS": "true",
-            "RUNNER_DEBUG": "1"
+            "GITEA_INSTANCE_URL": "http://pytest_gitea:3000",
+            "GITEA_RUNNER_REGISTRATION_TOKEN": runner_token,
+            "RUNNER_NAME": f"{create_dummy_user['username']}-runner",
+            "RUNNER_REPOSITORY": f"{create_dummy_user['username']}/{create_fake_repository['name']}",
+            "RUNNER_WORKDIR": "/runner/_work",
+            "RUNNER_LABELS": "self-hosted,Linux,X64,ubuntu-latest"
         },
-        name="pytest_act_runner",
-        tty=True,
+        volumes={
+            "runner_workdir": {"bind": "/runner/_work", "mode": "rw"}
+        },
+        name="gitea_runner",
+        network=docker_network.name
     )
 
-    time.sleep(10)  # Give the act runner some time to start up
+    time.sleep(10)  # Give the runner some time to register
 
     yield container
 
-    # Clean up after tests
+    # Cleanup after the tests
     container.stop()
     container.remove()
+
 
 @pytest.fixture(scope="session")
 def gitea_url():
@@ -161,7 +192,7 @@ def create_fake_repository(gitea_url, create_dummy_user, created_token):
 
 
 @pytest.fixture(scope="session")
-def mock_proj_a(gitea_url, proj_mono_1, create_dummy_user, create_fake_repository) -> pathlib.Path:
+def mock_proj_a(gitea_container, gitea_url, proj_mono_1, create_dummy_user, create_fake_repository) -> pathlib.Path:
     username = create_dummy_user["username"]
     password = create_dummy_user["password"]
     repo_name = create_fake_repository["name"]
@@ -195,7 +226,7 @@ def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_
     print("Gitea setup and tests passed successfully.")
 
 
-def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token,
+def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token, act_runner_container,
                       mock_proj_a):
     git_helper = GitHelper(mock_proj_a)
 
@@ -211,6 +242,7 @@ def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake
     repo_name = create_fake_repository["name"]
 
     # make a PR
-    create_gitea_pull_request(gitea_url, username, repo_name, created_token, "feat: new-stuff","feat/new-stuff", "main")
+    create_gitea_pull_request(gitea_url, username, repo_name, created_token, "feat: new-stuff", "feat/new-stuff",
+                              "main")
 
     print("Gitea upload tests passed successfully.")

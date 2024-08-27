@@ -142,3 +142,27 @@ def create_gitea_pull_request(gitea_url: str, owner: str, repo: str, token: str,
         print(f"Pull request created successfully: {response.json().get('html_url')}")
     else:
         raise ValueError(f"Failed to create pull request: {response.status_code} - {response.text}")
+
+def get_runner_registration_token(gitea_url: str, admin_username: str, admin_password: str) -> str:
+    """
+    Retrieves a runner registration token from the Gitea instance.
+    """
+    # Construct the API endpoint URL for the runner registration token
+    api_url = f"{gitea_url}/api/v1/admin/actions/runners/registration-token"
+
+    # Basic Authentication with admin credentials
+    auth = requests.auth.HTTPBasicAuth(admin_username, admin_password)
+
+    # Make the API request to get the registration token
+    response = requests.post(api_url, auth=auth)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        token = response.json().get('token')
+        if token:
+            print(f"Runner registration token retrieved successfully: {token}")
+            return token
+        else:
+            raise ValueError("Token not found in the response.")
+    else:
+        raise ValueError(f"Failed to retrieve runner registration token: {response.status_code} - {response.text}")
