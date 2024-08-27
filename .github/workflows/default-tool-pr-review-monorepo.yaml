@@ -199,6 +199,7 @@ jobs:
           EXTRA_REVIEW_STR: ${{ inputs.extra_review_str }}
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           from action_tool.pr_review import perform_pr_final_review
           
