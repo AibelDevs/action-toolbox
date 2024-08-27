@@ -8,6 +8,11 @@ on:
         type: string
         required: false
         default: '3.11'
+      config_toml_file:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
     outputs:
       python_review_str:
         description: 'Body of the comment'
@@ -39,7 +44,8 @@ env:
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
-
+    with:
+      config_toml_file: ${{ inputs.config_toml_file }}
   py-linting-review:
     needs: load-config
     uses: ./.github/workflows/tool-review-python-lint.yaml

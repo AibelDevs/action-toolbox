@@ -42,7 +42,6 @@ def test_basic_load_config(tmp_dir):
     mono_repo = mono_repos_data[0]
     assert mono_repo["name"] == 'a-sample-project'
 
-    env_vars = pathlib.Path(os.getenv('GITHUB_ENV')).read_text()
 
 def test_mono_config_file(tmp_dir):
     cfg_file = pathlib.Path(__file__).parent.absolute() / "files/monorepo1.toml"

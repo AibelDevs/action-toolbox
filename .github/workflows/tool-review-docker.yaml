@@ -7,6 +7,11 @@ on:
         type: string
         required: false
         default: '3.11'
+      config_toml_file:
+        description: "config file in repo for actions"
+        type: string
+        required: false
+        default: "action_config.toml"
     outputs:
       docker_review_str:
         description: 'Body of the comment'
@@ -25,6 +30,8 @@ on:
 jobs:
   load-config:
     uses: ./.github/workflows/tool-load-config.yaml
+    with:
+      config_toml_file: ${{ inputs.config_toml_file }}
 
   docker_prep:
     name: Docker Secrets and Login Check

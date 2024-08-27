@@ -1,0 +1,11 @@
+name: action-tools
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pytest
+  - python-dotenv
+  - toml==0.10.2
+  - pip
+  - pip:
+      - -e .
