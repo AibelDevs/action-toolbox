@@ -51,10 +51,18 @@ jobs:
     outputs:
       config_toml_file: ${{ steps.check-load-config.outputs.config_toml_file }}
     steps:
+      - name: Checkout Tool
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          path: _tool
+          ref: ${{ github.ref }}  # This refers to the branch the workflow is being called from (e.g., feat/monorepo-support)
+          fetch-depth: 0
+
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
           fetch-depth: 0
 
       - name: Set up Python
@@ -63,6 +71,7 @@ jobs:
           python-version: 3.12
 
       - run: pip install .
+        working-directory: _tool
 
       - name: Check Main config
         id: check-load-config
