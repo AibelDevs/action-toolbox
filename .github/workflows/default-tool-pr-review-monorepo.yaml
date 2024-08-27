@@ -52,7 +52,9 @@ jobs:
       config_toml_file: ${{ steps.check-load-config.outputs.config_toml_file }}
     steps:
       - name: print github context
-        run: echo "${{ toJson(github) }}"
+        run: |
+          echo "${{ github.action_repository }}"
+          echo "${{ github.action_ref }}"
 
       - name: Checkout Tool
         uses: actions/checkout@v4
