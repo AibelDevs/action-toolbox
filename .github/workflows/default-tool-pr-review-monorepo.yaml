@@ -56,19 +56,20 @@ jobs:
           echo "${{ github.action_repository }}"
           echo "${{ github.action_ref }}"
 
-      - name: Checkout Tool
-        uses: actions/checkout@v4
-        with:
-          repository: AibelDevs/action-toolbox
-          path: /home/runner/work/action_tool
-          ref: feat/monorepo-support  # This refers to the branch the workflow is being called from (e.g., feat/monorepo-support)
-          fetch-depth: 0
-
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
           fetch-depth: 0
+
+      - name: Checkout Tool
+        uses: actions/checkout@v4
+        with:
+          repository: AibelDevs/action-toolbox
+          path: action_tool
+          ref: feat/monorepo-support  # This refers to the branch the workflow is being called from (e.g., feat/monorepo-support)
+          fetch-depth: 0
+
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -76,7 +77,7 @@ jobs:
           python-version: 3.12
 
       - run: pip install .
-        working-directory: /home/runner/work/action_tool
+        working-directory: action_tool
 
       - name: Check Main config
         id: check-load-config
