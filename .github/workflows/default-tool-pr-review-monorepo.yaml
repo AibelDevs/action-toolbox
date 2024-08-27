@@ -76,7 +76,7 @@ jobs:
           python-version: 3.12
 
       - run: pip install .
-        working-directory: action_tool
+        working-directory: ${{ github.workspace }}/action_tool
 
       - name: Check Main config
         id: check-load-config
