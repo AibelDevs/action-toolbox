@@ -51,18 +51,15 @@ jobs:
     outputs:
       config_toml_file: ${{ steps.check-load-config.outputs.config_toml_file }}
     steps:
-      - name: Extract Repository and Ref
-        id: extract_ref
-        run: |
-          echo "REPO_NAME=$(echo '${{ github.workflow_ref }}' | cut -d'/' -f1,2)" >> $GITHUB_ENV
-          echo "BRANCH_NAME=$(echo '${{ github.workflow_ref }}' | cut -d'@' -f2)" >> $GITHUB_ENV
+      - name: print github context
+        run: echo "${{ toJson(github) }}"
 
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
-          repository: ${{ env.REPO_NAME }}
+          repository: AibelDevs/action-toolbox
           path: action_tool
-          ref: ${{ env.BRANCH_NAME }}
+          ref: feat/monorepo-support  # This refers to the branch the workflow is being called from (e.g., feat/monorepo-support)
           fetch-depth: 0
 
       - name: Checkout PR
