@@ -98,7 +98,6 @@ jobs:
           CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
           GITHUB_TOKEN: ${{ github.token }}
-
         shell: python
         run: |
           from action_tool.monorepos import check_monorepo_labels

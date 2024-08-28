@@ -7,7 +7,7 @@ from action_tool.utils import deserialize_str, set_output
 
 def review_pr():
     set_output('pr_review_ok', 'true')
-    set_output('pr_review_str', 'A pr review has been performed')
+    set_output('pr_review_str', 'A pr review has been performed', True)
 
 
 def perform_pr_final_review():
