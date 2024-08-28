@@ -57,6 +57,7 @@ on:
 env:
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_URL: ${{ github.server_url }}
+  PR_NUMBER: ${{ github.event.pull_request.number }}
 
 permissions:
   pull-requests: write

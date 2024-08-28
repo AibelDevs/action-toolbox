@@ -12,6 +12,7 @@ def check_pr_title(title: str):
 
 def review_pr():
     git_remote = get_git_remote_adapter()
+    git_remote.add_missing_repo_labels()
 
     pr_is_ok = True
     header = "\n# PR Review:\n\n"
