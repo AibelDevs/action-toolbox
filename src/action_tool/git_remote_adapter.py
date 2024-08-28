@@ -37,19 +37,20 @@ class GitRemoteRepo(abc.ABC):
         "release-minor": "--minor",
         "release-major": "--major",
     }
+    rel_labels_with_color = {
+        'release-skip': 'b3b3b3',  # Gray
+        'release-auto': 'ffff00',  # Yellow
+        'release-patch': '00ff00',  # Green
+        'release-minor': '0000ff',  # Blue
+        'release-major': 'ff0000',  # Red
+
+    }
+    bot_labels = {
+        'silence-bot': '000000'  # Black
+    }
 
     def __init__(self):
-        self.rel_labels_with_color = {
-            'release-skip': 'b3b3b3',  # Gray
-            'release-auto': 'ffff00',  # Yellow
-            'release-patch': '00ff00',  # Green
-            'release-minor': '0000ff',  # Blue
-            'release-major': 'ff0000',  # Red
-
-        }
-        self.bot_labels = {
-            'silence-bot': '000000'  # Black
-        }
+        pass
 
     def get_pr_release_label(self):
         rel_labels = set(self.rel_labels_with_color.keys())
@@ -59,6 +60,13 @@ class GitRemoteRepo(abc.ABC):
             raise ValueError(f"Unable to find release labels: {pr_labels=}, {rel_labels=}")
         rel_label = list(intersection)[0]
         return rel_label
+
+    def get_custom_labels(self) -> set[str]:
+        rel_labels = set(list(self.rel_labels_with_color.keys()) + list(self.bot_labels.keys()))
+        pr_labels = self.get_pr_labels()
+        difference = pr_labels - rel_labels
+
+        return difference
 
     def should_release(self):
         rel_label = self.get_pr_release_label()

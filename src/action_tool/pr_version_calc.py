@@ -2,6 +2,7 @@ import os
 import subprocess
 from typing import Literal
 
+from action_tool.config import logger
 from action_tool.git_remote_adapter import GitRemoteRepo
 
 
@@ -25,7 +26,7 @@ def calculate_version(release_label, toml_file, git_dir=None):
     result = subprocess.run(command, capture_output=True, text=True, cwd=git_dir)
 
     if result.stderr:
-        print(result.stderr)
+        logger.error(result.stderr)
 
     output = result.stdout.strip()
     print(f'Captured Version Name: "{output}"')
@@ -34,7 +35,10 @@ def calculate_version(release_label, toml_file, git_dir=None):
     return new_version
 
 
-def run_semantic_release(toml_file, git_dir, release_override: Literal["--patch", "--minor", "--major", None] = None):
+def run_semantic_release(toml_file, release_override: Literal["--patch", "--minor", "--major", None] = None,
+                         git_dir=None):
+    if git_dir is None:
+        git_dir = os.getcwd()
     command = ["semantic-release", "--config", str(toml_file), "version", "--changelog", "--vcs-release"]
     if release_override is not None:
         command.append(release_override)

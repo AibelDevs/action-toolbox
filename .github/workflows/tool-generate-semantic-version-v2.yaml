@@ -78,6 +78,8 @@ jobs:
       - name: Evaluate Release
         shell: python
         id: evaluate-release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           from action_tool.git_remote_adapter import get_git_remote_adapter
           from action_tool.utils import set_output
@@ -127,11 +129,16 @@ jobs:
         env:
           RELEASE_LABEL: ${{ needs.eval-release.outputs.release_label }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           import os
-          from action_tool.pr_version_calc import calculate_version
+          from action_tool.git_remote_adapter import GitRemoteRepo
+          from action_tool.pr_version_calc import run_semantic_release
           
           rel_label = os.getenv("RELEASE_LABEL")
           config_toml_file = os.getenv("CONFIG_TOML_FILE")
-          
-          calculate_version(rel_label, config_toml_file) 
+          override_label = GitRemoteRepo.release_label_map.get(rel_label)
+          if override_label == "":
+              override_label = None
+              
+          run_semantic_release(config_toml_file, override_label)

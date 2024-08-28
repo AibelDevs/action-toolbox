@@ -33,8 +33,8 @@ class ActionContext:
     mono_repo_project: list[MonoRepo] = field(default_factory=list)
 
 
-def load_config() -> ActionContext:
-    config_toml_file = os.getenv("CONFIG_TOML_FILE")
+def load_config(config_file=None) -> ActionContext:
+    config_toml_file = os.getenv("CONFIG_TOML_FILE", config_file)
     if config_toml_file is None:
         raise ValueError("CONFIG_TOML_FILE environment variable is not set")
 
