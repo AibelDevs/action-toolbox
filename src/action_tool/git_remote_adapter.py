@@ -5,7 +5,7 @@ import requests
 from abc import abstractmethod
 
 from action_tool.config import logger
-from action_tool.gitea_tools import get_gitea_labels, comment_on_gitea_pr, create_gitea_label
+from action_tool.gitea_tools import get_gitea_labels, comment_on_gitea_pr, create_gitea_label, merge_gitea_pr
 from action_tool.github_tools import comment_on_pr, check_silence_bot_label, create_or_update_github_repo_label
 from action_tool.utils import set_output
 from github import Github
@@ -30,6 +30,14 @@ def is_in_gitea_action():
 
 
 class GitRemoteRepo(abc.ABC):
+    release_label_map = {
+        "release-skip": "",
+        "release-auto": "",
+        "release-patch": "--patch",
+        "release-minor": "--minor",
+        "release-major": "--major",
+    }
+
     def __init__(self):
         self.rel_labels_with_color = {
             'release-skip': 'b3b3b3',  # Gray
@@ -43,9 +51,18 @@ class GitRemoteRepo(abc.ABC):
             'silence-bot': '000000'  # Black
         }
 
-    def check_release_labels(self, label_names: list[str]):
-        valid_labels = set(self.rel_labels_with_color.keys())
-        intersect_labels = valid_labels.intersection(set(label_names))
+    def get_pr_release_label(self):
+        rel_labels = set(self.rel_labels_with_color.keys())
+        labels = self.get_pr_labels()
+        rel_label = list(rel_labels.intersection(set(labels)))[0]
+        return rel_label
+
+    def should_release(self):
+        rel_label = self.get_pr_release_label()
+        if rel_label == 'release-skip':
+            return False
+
+        return True
 
     @abc.abstractmethod
     def get_pr_number(self):
@@ -57,6 +74,10 @@ class GitRemoteRepo(abc.ABC):
 
     @abc.abstractmethod
     def get_pr_labels(self):
+        pass
+
+    @abc.abstractmethod
+    def get_pr_release_label(self):
         pass
 
     @abc.abstractmethod
@@ -79,6 +100,14 @@ class GitRemoteRepo(abc.ABC):
     def set_pr_label(self, lbl_name: str):
         pass
 
+    @abstractmethod
+    def clear_all_previous_pr_bot_comments(self):
+        pass
+
+    @abstractmethod
+    def merge_pr(self):
+        pass
+
 
 class GithubRemoteRepo(GitRemoteRepo):
     def __init__(self):
@@ -88,6 +117,7 @@ class GithubRemoteRepo(GitRemoteRepo):
         # Authenticate to GitHub
         g = Github(self.token)
         self.repo = g.get_repo(self.repo_full_name)
+        self.bot_username = "github-actions[bot]"
         self.pull_request = None
         try:
             pr_number = self.get_pr_number()
@@ -95,11 +125,11 @@ class GithubRemoteRepo(GitRemoteRepo):
         except ValueError as e:
             logger.warning(e)
 
-    def get_pr_number(self) -> str:
+    def get_pr_number(self) -> int:
         pr_number = os.getenv('PR_NUMBER')
         if pr_number is None:
             raise ValueError("PR number is not found. Please set the PR_NUMBER environment variable.")
-        return pr_number
+        return int(pr_number)
 
     def get_repo_labels(self):
         return {label.name: label.color for label in self.repo.get_labels()}
@@ -152,17 +182,46 @@ class GithubRemoteRepo(GitRemoteRepo):
         except Exception as e:
             print(f"An error occurred: {e}")
 
+    def clear_all_previous_pr_bot_comments(self):
+        try:
+            pr = self.repo.get_pull(int(self.get_pr_number()))
+            comments = pr.get_issue_comments()
+
+            bot_comments = [comment for comment in comments if comment.user.login == self.bot_username]
+
+            if len(bot_comments) > 1:
+                for comment in bot_comments[:-1]:  # Keep only the last comment
+                    comment.delete()
+                    print(f"Deleted comment: {comment.id}")
+
+            print("Cleared all but the last bot comment.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+    def merge_pr(self):
+        pr_number = self.get_pr_number()
+        try:
+            pr = self.repo.get_pull(pr_number)
+            if pr.is_merged():
+                print(f"PR #{pr_number} is already merged.")
+                return
+            pr.merge()
+            print(f"PR #{pr_number} has been merged successfully.")
+        except Exception as e:
+            print(f"An error occurred while merging PR #{pr_number}: {e}")
+
 
 class GiteaRemoteRepo(GitRemoteRepo):
-    def __init__(self):
+    def __init__(self, token=None, url=None, repo_owner=None, repo_name=None):
         super().__init__()
-        self.token = os.getenv('GITHUB_TOKEN')
+        self.token = os.getenv('GITHUB_TOKEN', token)
         repo_full_name = os.getenv('GITHUB_REPOSITORY')  # This is in the form 'owner/repo'
         owner, repo = repo_full_name.split('/')
-        self.url = os.getenv('GITHUB_URL')
+        self.url = os.getenv('GITHUB_URL', url)
         logger.info(f"Using {owner}/{repo}")
-        self.owner = owner
-        self.repo = repo
+        self.bot_username = "gitea-actions[bot]"
+        self.owner = owner if repo_owner is None else repo_owner
+        self.repo = repo if repo_name is None else repo_name
         try:
             self.get_pr_number()
         except ValueError as e:
@@ -186,7 +245,6 @@ class GiteaRemoteRepo(GitRemoteRepo):
             return []
 
         return [x['name'] for x in pr.get('labels', [])]
-
 
     def add_comment_on_pr(self, comment_body):
         comment_on_gitea_pr(comment_body, self.get_pr_number(), self.url, self.owner, self.repo, self.token)
@@ -255,6 +313,33 @@ class GiteaRemoteRepo(GitRemoteRepo):
         except requests.exceptions.RequestException as e:
             print(f"An error occurred: {e}")
 
+    def clear_all_previous_pr_bot_comments(self):
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Content-Type": "application/json"
+        }
+        url = f"{self.url}/api/v1/repos/{self.repo}/issues/{self.get_pr_number()}/comments"
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            comments = response.json()
+
+            bot_comments = [comment for comment in comments if comment['user']['login'] == self.bot_username]
+
+            if len(bot_comments) > 1:
+                for comment in bot_comments[:-1]:  # Keep only the last comment
+                    delete_url = f"{self.url}/api/v1/repos/{self.repo}/issues/comments/{comment['id']}"
+                    delete_response = requests.delete(delete_url, headers=headers)
+                    delete_response.raise_for_status()
+                    print(f"Deleted comment: {comment['id']}")
+
+            print("Cleared all but the last bot comment.")
+        except requests.exceptions.RequestException as e:
+            print(f"An error occurred: {e}")
+
+    def merge_pr(self):
+        merge_gitea_pr(self.get_pr_number(), self.url, self.owner, self.repo, self.token)
 
 
 class LocalGitRemoteRepo(GitRemoteRepo):

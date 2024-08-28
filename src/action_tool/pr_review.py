@@ -101,3 +101,4 @@ def perform_pr_final_review():
 
     git_remote_adapter = get_git_remote_adapter()
     git_remote_adapter.add_comment_on_pr(body)
+    git_remote_adapter.clear_all_previous_pr_bot_comments()

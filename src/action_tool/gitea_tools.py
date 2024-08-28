@@ -116,6 +116,19 @@ def create_gitea_pull_request(gitea_url: str, owner: str, repo: str, token: str,
     else:
         raise ValueError(f"Failed to create pull request: {response.status_code} - {response.text}")
 
+def merge_gitea_pr(pr_number, url, owner, repo, token):
+    headers = {
+        "Authorization": f"token {token}",
+        "Content-Type": "application/json"
+    }
+    merge_url = f"{url}/api/v1/repos/{owner}/{repo}/pulls/{pr_number}/merge"
+
+    try:
+        response = requests.post(merge_url, headers=headers)
+        response.raise_for_status()
+        print(f"PR #{pr_number} has been merged successfully.")
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred while merging PR #{pr_number}: {e}")
 
 def get_runner_registration_token(gitea_url: str, admin_username: str, admin_password: str) -> str:
     """
@@ -283,5 +296,3 @@ def comment_on_gitea_pr(comment_body, pr_index, gitea_url, repo_owner, repo_name
         print("Comment added successfully!")
     else:
         raise ValueError(f"Failed to add comment: {response.status_code} - {response.text}")
-
-

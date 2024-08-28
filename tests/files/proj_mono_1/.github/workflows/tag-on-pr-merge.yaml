@@ -1,4 +1,4 @@
-name: Create Tag on PR Merge
+from action_tool.utils import set_outputname: Create Tag on PR Merge
 
 on:
   pull_request:
@@ -18,13 +18,17 @@ concurrency:
 env:
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_URL: ${{ github.server_url }}
+  PR_NUMBER: ${{ github.event.pull_request.number }}
   tool_repo: dummyuser/action-toolbox
   tool_branch: main
-  config_toml_file: action_config.toml
+  CONFIG_TOML_FILE: action_config.toml
 
 jobs:
-  pr-version-calculate:
+  eval-release:
     runs-on: ubuntu-latest
+    outputs:
+      should_make_a_release: ${{ steps.evaluate-release.outputs.should_make_release }}
+      release_label: ${{ steps.evaluate-release.outputs.release_label }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -35,9 +39,9 @@ jobs:
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.tool_repo }}
+          repository: ${{ env.tool_repo }}
           path: action_tool
-          ref: ${{ inputs.tool_branch }}
+          ref: ${{ env.tool_branch }}
           fetch-depth: 0
 
       - name: Set up Python
@@ -48,25 +52,25 @@ jobs:
       - run: pip install .
         working-directory: action_tool
 
-      - name: Run PR version calc
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+      - name: Evaluate Release
         shell: python
+        id: evaluate-release
         run: |
-          import os
-          import json
-          from action_tool.pr_version_calc import add_commit_for_semantic_release_calculation, get_latest_release_tag, \
-            check_calculated_version
+          from action_tool.git_remote_adapter import get_git_remote_adapter
+          from action_tool.utils import set_output
           
-          repo_path = ""
-          add_commit_for_semantic_release_calculation(repo_path, os.getenv('PR_TITLE'))
-          latest_tag = get_latest_release_tag(repo_path)
-          check_calculated_version(labels, os.getenv('config_toml_file'), latest_tag)
+          git_remote = get_git_remote_adapter()
+          if git_remote.should_release():
+              set_output("should_make_release", "true")
+              rel_label = git_remote.get_pr_release_label()
+              set_output("release_label", rel_label)
+          else:
+              set_output("should_make_release", "false")
+  
 
   generateRelease:
-    needs: pr-version-calculate
-    if: ${{ needs.pr-version-calculate.outputs.is_release == 'true' || inputs.release_override != '' }}
+    needs: eval-release
+    if: ${{ needs.eval-release.outputs.should_make_a_release == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -79,34 +83,32 @@ jobs:
           ref: ${{github.ref_name}}
           ssh-key: ${{ secrets.SOURCE_KEY }}
 
-      - name: Check PR for any labels suggesting release_override
-        if: ${{ inputs.release_override == '' }}
-        shell: python
-        run: |
-          import os
-          
-          def set_env(name, value):
-            with open(os.environ['GITHUB_ENV'], 'a') as fh:
-                print(f'{name}={value}', file=fh)
-          
-          release_override_found = "${{ needs.pr-version-calculate.outputs.release_override_found }}"
-          if release_override_found != '':
-            set_env('RELEASE_OVERRIDE', release_override_found)  
-          
+      - name: Checkout Tool
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.tool_repo }}
+          path: action_tool
+          ref: ${{ env.tool_branch }}
+          fetch-depth: 0
 
-      - name: Set up Python ${{ inputs.python_version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ inputs.python_version }}
+          python-version: 3.12
 
-      - name: Install python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install python-semantic-release=="${{ inputs.python_semantic_release_pkg }}"
+      - run: pip install .
+        working-directory: action_tool
 
-      - name: Run semantic release force ${{ env.RELEASE_OVERRIDE }}
-        run: |
-          semantic-release --config ${{ inputs.config_toml_file }} version --changelog ${{ env.RELEASE_OVERRIDE }} --vcs-release
+      - name: Check PR for any labels suggesting release_override
+        shell: python
         env:
+          RELEASE_LABEL: ${{ needs.eval-release.outputs.release_label }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+        run: |
+          import os
+          from action_tool.pr_version_calc import calculate_version
+          
+          rel_label = os.getenv("RELEASE_LABEL")
+          config_toml_file = os.getenv("CONFIG_TOML_FILE")
+          
+          calculate_version(rel_label, config_toml_file) 
