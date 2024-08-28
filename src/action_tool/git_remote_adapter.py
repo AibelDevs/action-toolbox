@@ -3,15 +3,8 @@ import os
 
 from github import Github
 
+from action_tool.config import logger
 from action_tool.gitea_tools import get_gitea_labels
-
-
-def is_in_github_action():
-    return os.getenv('GITHUB_ACTIONS') == "true"
-
-
-def is_in_gitea_action():
-    return os.getenv('GITEA_INSTANCE_URL') is not None
 
 
 class GitRemoteRepo(abc.ABC):
@@ -21,6 +14,31 @@ class GitRemoteRepo(abc.ABC):
     @abc.abstractmethod
     def get_labels(self):
         pass
+
+
+def is_in_github_action():
+    actions = os.getenv('GITHUB_ACTIONS') == "true"
+    git_remote_url = os.getenv('GITHUB_URL')
+    logger.info(f"{git_remote_url=}")
+    return actions and 'github' in git_remote_url
+
+
+def is_in_gitea_action():
+    actions = os.getenv('GITEA_ACTIONS') == "true"
+    git_remote_url = os.getenv('GITHUB_URL')
+    logger.info(f"{git_remote_url=}")
+    return actions and 'github' not in git_remote_url
+
+
+def get_git_remote_adapter() -> GitRemoteRepo:
+    if is_in_github_action():
+        logger.info("Is a Github Actions Runner")
+        return GithubRemoteRepo()
+    elif is_in_gitea_action():
+        logger.info("Is a Gitea Actions Runner")
+        return GiteaRemoteRepo()
+    else:
+        raise ValueError('Not a GitHub action')
 
 
 class GithubRemoteRepo(GitRemoteRepo):
@@ -37,12 +55,15 @@ class GithubRemoteRepo(GitRemoteRepo):
 
 
 class GiteaRemoteRepo(GitRemoteRepo):
-    def __init__(self, url, owner, repo, token):
+    def __init__(self):
         super().__init__()
-        self.url = url
+        self.token = os.getenv('GITHUB_TOKEN')
+        repo_full_name = os.getenv('GITHUB_REPOSITORY')  # This is in the form 'owner/repo'
+        owner, repo = repo_full_name.split('/')
+        self.url = os.getenv('GITHUB_URL')
+        logger.info(f"Using {owner}/{repo}")
         self.owner = owner
         self.repo = repo
-        self.token = token
 
     def get_labels(self):
         return get_gitea_labels(self.url, self.owner, self.repo, self.token)

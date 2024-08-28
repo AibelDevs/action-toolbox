@@ -54,6 +54,9 @@ on:
       CUSTOM_PYPI_URL:
         required: false
 
+env:
+  GITHUB_REPOSITORY: ${{ github.repository }}
+  GITHUB_URL: ${{ github.server_url }}
 
 permissions:
   pull-requests: write
@@ -95,7 +98,7 @@ jobs:
           CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
           GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+
         shell: python
         run: |
           from action_tool.monorepos import check_monorepo_labels

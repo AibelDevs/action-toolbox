@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 
-from action_tool.remote_git_adapter import is_in_github_action
+from action_tool.git_remote_adapter import is_in_github_action
 from action_tool.utils import set_output
 
 load_dotenv()

@@ -13,14 +13,14 @@ from action_tool.git_helper import GitHelper
 from action_tool.gitea_tools import get_gitea_token, create_repository, \
     create_gitea_pull_request, get_runner_registration_token, create_gitea_label, \
     create_gitea_release_labels_if_not_exists
-from action_tool.remote_git_adapter import is_in_github_action
+from action_tool.git_remote_adapter import is_in_github_action, is_in_gitea_action
 from tests.conftest import proj_mono_1
 
 
 def get_docker_env():
-    if is_in_github_action():
+    if is_in_github_action() or is_in_gitea_action():
         client = docker.from_env()
-    else:
+    else:  # Running locally
         client = docker.DockerClient(base_url='tcp://localhost:2375')
     return client
 
@@ -287,6 +287,7 @@ def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake
     # Add a dummy file
     with open(mock_proj_a / "src/packages/a_sample_project/new_file.txt", "w") as f:
         f.write("This is a new file.")
+
     git_helper.commit("I'm adding a new file.")
     git_helper.push()
 
