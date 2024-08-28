@@ -10,7 +10,6 @@ from action_tool.utils import deserialize_str, get_output
 def test_basic_load_config(tmp_dir, proj_mono_1):
     cfg_file = proj_mono_1 / "action_config.toml"
     os.environ["CONFIG_TOML_FILE"] = cfg_file.as_posix()
-
     action_context = load_config()
 
     output_vars = pathlib.Path(os.getenv('GITHUB_OUTPUT')).read_text()

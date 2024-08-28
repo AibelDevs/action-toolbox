@@ -25,6 +25,8 @@ class GitRemoteRepo(abc.ABC):
 def is_in_github_action():
     actions = os.getenv('GITHUB_ACTIONS') == "true"
     git_remote_url = os.getenv('GITHUB_URL')
+    if git_remote_url is None:
+        return
     logger.info(f"{git_remote_url=}")
     return actions and 'github' in git_remote_url
 
@@ -32,6 +34,8 @@ def is_in_github_action():
 def is_in_gitea_action():
     actions = os.getenv('GITEA_ACTIONS') == "true"
     git_remote_url = os.getenv('GITHUB_URL')
+    if git_remote_url is None:
+        return
     logger.info(f"{git_remote_url=}")
     return actions and 'github' not in git_remote_url
 
