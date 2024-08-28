@@ -58,7 +58,7 @@ def set_labels_if_not_already_created(label_names: list[str]):
 
 # Function to get all labels in the repository with their colors
 def get_all_labels_with_colors(repo):
-    return {label.name: label.color for label in repo.get_repo_labels()}
+    return {label.name: label.color for label in repo.get_labels()}
 
 
 # Function to create or update a label in the repository
