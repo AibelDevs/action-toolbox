@@ -1,10 +1,7 @@
-import json
-import os
-
 from action_tool.config import logger
+from action_tool.git_remote_adapter import is_in_github_action, get_git_remote_adapter
 from action_tool.github_tools import set_labels_if_not_already_created
 from action_tool.load_config import load_config
-from action_tool.git_remote_adapter import is_in_github_action, get_git_remote_adapter
 from action_tool.utils import set_output
 
 
@@ -15,7 +12,7 @@ def check_monorepo_labels():
         logger.info("Not a monorepo, skipping...")
         return
 
-    labels = git_remote.get_labels()
+    labels = git_remote.get_repo_labels()
     if labels is None:
         raise Exception("LABELS environment variable is not set")
 

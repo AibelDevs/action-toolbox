@@ -1,26 +1,14 @@
 import abc
-import os
 import json
-
-from github import Github
+import os
+import requests
+from abc import abstractmethod
 
 from action_tool.config import logger
-from action_tool.gitea_tools import get_gitea_labels, comment_on_gitea_pr
-from action_tool.github_tools import comment_on_pr, check_silence_bot_label
+from action_tool.gitea_tools import get_gitea_labels, comment_on_gitea_pr, create_gitea_label
+from action_tool.github_tools import comment_on_pr, check_silence_bot_label, create_or_update_github_repo_label
 from action_tool.utils import set_output
-
-
-class GitRemoteRepo(abc.ABC):
-    def __init__(self):
-        ...
-
-    @abc.abstractmethod
-    def get_labels(self):
-        pass
-
-    @abc.abstractmethod
-    def comment_on_pr(self, comment_body, pr_index):
-        pass
+from github import Github
 
 
 def is_in_github_action():
@@ -41,16 +29,55 @@ def is_in_gitea_action():
     return actions and 'github' not in git_remote_url
 
 
-def get_git_remote_adapter() -> GitRemoteRepo:
-    if is_in_github_action():
-        logger.info("Is a Github Actions Runner")
-        return GithubRemoteRepo()
-    elif is_in_gitea_action():
-        logger.info("Is a Gitea Actions Runner")
-        return GiteaRemoteRepo()
-    else:
-        logger.info("running locally")
-        return LocalGitRemoteRepo()
+class GitRemoteRepo(abc.ABC):
+    def __init__(self):
+        self.rel_labels_with_color = {
+            'release-skip': 'b3b3b3',  # Gray
+            'release-auto': 'ffff00',  # Yellow
+            'release-patch': '00ff00',  # Green
+            'release-minor': '0000ff',  # Blue
+            'release-major': 'ff0000',  # Red
+
+        }
+        self.bot_labels = {
+            'silence-bot': '000000'  # Black
+        }
+
+    def check_release_labels(self, label_names: list[str]):
+        valid_labels = set(self.rel_labels_with_color.keys())
+        intersect_labels = valid_labels.intersection(set(label_names))
+
+    @abc.abstractmethod
+    def get_pr_number(self):
+        pass
+
+    @abc.abstractmethod
+    def get_repo_labels(self):
+        pass
+
+    @abc.abstractmethod
+    def get_pr_labels(self):
+        pass
+
+    @abc.abstractmethod
+    def add_comment_on_pr(self, comment_body):
+        pass
+
+    @abc.abstractmethod
+    def check_if_secret_exists(self, secret: str):
+        pass
+
+    @abstractmethod
+    def get_pr_title(self):
+        pass
+
+    @abstractmethod
+    def add_missing_repo_labels(self):
+        pass
+
+    @abstractmethod
+    def set_pr_label(self, lbl_name: str):
+        pass
 
 
 class GithubRemoteRepo(GitRemoteRepo):
@@ -61,19 +88,69 @@ class GithubRemoteRepo(GitRemoteRepo):
         # Authenticate to GitHub
         g = Github(self.token)
         self.repo = g.get_repo(self.repo_full_name)
+        self.pull_request = None
+        try:
+            pr_number = self.get_pr_number()
+            self.pull_request = self.repo.get_pull(int(pr_number))
+        except ValueError as e:
+            logger.warning(e)
 
-    def get_labels(self):
+    def get_pr_number(self) -> str:
+        pr_number = os.getenv('PR_NUMBER')
+        if pr_number is None:
+            raise ValueError("PR number is not found. Please set the PR_NUMBER environment variable.")
+        return pr_number
+
+    def get_repo_labels(self):
         return {label.name: label.color for label in self.repo.get_labels()}
 
-    def comment_on_pr(self, comment_body, pr_index):
-        pull_request = self.repo.get_pull(int(pr_index))
-        silence_bot = check_silence_bot_label(pull_request)
+    def get_pr_labels(self):
+        try:
+            pr = self.repo.get_pull(self.get_pr_number())
+            labels = [label.name for label in pr.get_labels()]
+            return labels
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return []
+
+    def add_comment_on_pr(self, comment_body):
+        self.get_pr_number()
+
+        silence_bot = check_silence_bot_label(self.pull_request)
 
         if silence_bot:
             print("Silence bot label found, skipping comment.")
             set_output('silence_bot', str(silence_bot).lower())
         else:
-            comment_on_pr(self.repo, pull_request, comment_body)
+            comment_on_pr(self.repo, self.pull_request, comment_body)
+
+    def check_if_secret_exists(self, secret: str) -> bool:
+        try:
+            secrets = self.repo.get_secrets()
+            return secret in [s.name for s in secrets]
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return False
+
+    def get_pr_title(self):
+        self.get_pr_number()
+        return self.pull_request.title
+
+    def add_missing_repo_labels(self):
+        for rel_lbl, color in self.rel_labels_with_color.items():
+            create_or_update_github_repo_label(self.repo, rel_lbl, color)
+
+        for rel_lbl, color in self.bot_labels.items():
+            create_or_update_github_repo_label(self.repo, rel_lbl, color)
+
+    def set_pr_label(self, lbl_name: str):
+        pr_number = self.get_pr_number()
+        try:
+            pr = self.repo.get_pull(int(pr_number))
+            pr.add_to_labels(lbl_name)
+            print(f"Label '{lbl_name}' added to PR #{pr_number}.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 
 class GiteaRemoteRepo(GitRemoteRepo):
@@ -86,22 +163,136 @@ class GiteaRemoteRepo(GitRemoteRepo):
         logger.info(f"Using {owner}/{repo}")
         self.owner = owner
         self.repo = repo
+        try:
+            self.get_pr_number()
+        except ValueError as e:
+            logger.warning(e)
 
-    def get_labels(self):
+    def get_pr_number(self) -> str:
+        pr_number = os.getenv('PR_NUMBER')
+        if pr_number is None:
+            raise ValueError("PR number is not found. Please set the PR_NUMBER environment variable.")
+        return pr_number
+
+    def get_repo_labels(self):
         raw_labels = get_gitea_labels(self.url, self.owner, self.repo, self.token)
         labels = [lbl["name"] for lbl in raw_labels]
         return labels
 
-    def comment_on_pr(self, comment_body, pr_index):
-        comment_on_gitea_pr(comment_body, pr_index, self.url, self.owner, self.repo, self.token)
+    def get_pr_labels(self) -> list[str]:
+        try:
+            pr = self._self_get_pr()
+        except requests.exceptions.RequestException as e:
+            return []
+
+        return [x['name'] for x in pr.get('labels', [])]
+
+
+    def add_comment_on_pr(self, comment_body):
+        comment_on_gitea_pr(comment_body, self.get_pr_number(), self.url, self.owner, self.repo, self.token)
+
+    def check_if_secret_exists(self, secret: str) -> bool:
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Content-Type": "application/json"
+        }
+
+        url = f"{self.url}/api/v1/repos/{self.owner}/{self.repo}/actions/secrets"
+
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            secrets = response.json()
+            return any(s['name'] == secret for s in secrets)
+        else:
+            raise ValueError(f"Failed to get secrets: {response.status_code} - {response.text}")
+
+    def _self_get_pr(self):
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Content-Type": "application/json"
+        }
+        pr_number = self.get_pr_number()
+        url = f"{self.url}/api/v1/repos/{self.owner}/{self.repo}/pulls/{pr_number}"
+
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        pr = response.json()
+        return pr
+
+    def get_pr_title(self):
+        try:
+            pr = self._self_get_pr()
+        except requests.exceptions.RequestException as e:
+            return ""
+
+        return pr.get("title", "")
+
+    def add_missing_repo_labels(self):
+        valid_labels = set(self.rel_labels_with_color.keys())
+        existing_labels = set(self.get_repo_labels())
+        missing_labels = valid_labels - existing_labels
+        for label in missing_labels:
+            lbl_with_color = self.rel_labels_with_color[label]
+            create_gitea_label(label, self.url, self.owner, self.repo, self.token, color=lbl_with_color)
+
+    def set_pr_label(self, lbl_name: str):
+        pr_number = self.get_pr_number()
+
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Content-Type": "application/json"
+        }
+        url = f"{self.url}/api/v1/repos/{self.owner}/{self.repo}/issues/{self.get_pr_number()}/labels"
+
+        payload = {
+            "labels": [lbl_name]
+        }
+
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            print(f"Label '{lbl_name}' added to PR #{pr_number}.")
+        except requests.exceptions.RequestException as e:
+            print(f"An error occurred: {e}")
+
 
 
 class LocalGitRemoteRepo(GitRemoteRepo):
     def __init__(self):
         super().__init__()
 
-    def get_labels(self):
-        return json.loads(os.environ["LABELS"])
+    def get_pr_number(self):
+        return os.environ["PR_NUMBER"]
 
-    def comment_on_pr(self, comment_body, pr_index):
-        print(f"Comment:\n{comment_body} on {pr_index}")
+    def get_pr_labels(self):
+        return json.loads(os.environ["PR_LABELS"])
+
+    def get_repo_labels(self):
+        return json.loads(os.environ["REPO_LABELS"])
+
+    def add_comment_on_pr(self, comment_body):
+        print(comment_body)
+
+    def check_if_secret_exists(self, secret: str) -> bool:
+        return json.loads(os.environ["SECRETS"])
+
+    def get_pr_title(self):
+        return os.environ["PR_TITLE"]
+
+    def add_missing_repo_labels(self):
+        ...
+
+    def set_pr_label(self, lbl_name: str):
+        ...
+
+
+def get_git_remote_adapter() -> GitRemoteRepo:
+    if is_in_github_action():
+        logger.info("Is a Github Actions Runner")
+        return GithubRemoteRepo()
+    elif is_in_gitea_action():
+        logger.info("Is a Gitea Actions Runner")
+        return GiteaRemoteRepo()
+    else:
+        logger.info("running locally")
+        return LocalGitRemoteRepo()

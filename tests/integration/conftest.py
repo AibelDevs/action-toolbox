@@ -8,14 +8,11 @@ import docker
 import git
 import pytest
 import requests
-from docker.errors import NotFound
-
-from action_tool.git_helper import GitHelper
-from action_tool.gitea_tools import get_gitea_token, create_repository, \
-    create_gitea_pull_request, get_runner_registration_token, create_gitea_label, \
-    create_gitea_release_labels_if_not_exists, generate_ssh_keypair, add_deploy_key_to_gitea, add_secret_to_gitea
 from action_tool.git_remote_adapter import is_in_github_action, is_in_gitea_action
+from action_tool.gitea_tools import get_gitea_token, create_repository, \
+    get_runner_registration_token, generate_ssh_keypair, add_deploy_key_to_gitea, add_secret_to_gitea
 from action_tool.utils import encode_ssh_key
+from docker.errors import NotFound
 
 
 def get_docker_env():
@@ -302,39 +299,3 @@ def action_toolbox_proj(gitea_container, gitea_url, root_dir, create_dummy_user,
         local_repo.git.execute(["git", "commit", "-am", "Initial Commit"])
         local_repo.git.push("origin", curr_branch.name, set_upstream=True)
         yield pathlib.Path(local_temp_dir)
-
-
-def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_repository):
-    assert gitea_container.status == "created"
-    assert requests.get(gitea_url).status_code == 200
-    print("Gitea setup and tests passed successfully.")
-
-
-def test_pr_review(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token,
-                   act_runner_container, mock_proj_a, action_toolbox_proj):
-    git_local_helper = GitHelper(mock_proj_a)
-    git_local_helper.create_branch("feat/new-stuff", push=True)
-
-    # Add a dummy file
-    with open(mock_proj_a / "src/packages/a_sample_project/new_file.txt", "w") as f:
-        f.write("This is a new file.")
-
-    git_local_helper.commit("I'm adding a new file.")
-    git_local_helper.push()
-
-    username = create_dummy_user["username"]
-    repo_name = create_fake_repository["name"]
-
-    create_gitea_release_labels_if_not_exists(gitea_url, username, repo_name, created_token)
-    create_gitea_label("a-sample-project", gitea_url, username, repo_name, created_token)
-
-    # make a PR
-    create_gitea_pull_request(gitea_url, username, repo_name, created_token, "feat: new-stuff", "feat/new-stuff",
-                              "main")
-
-    # wait for all checks to complete using a while loop
-    ...
-
-    # get the PR review comment and evaluate its contents
-    # Todo: add tests to check that the PR bot has created the correct message
-    print("Gitea PR review passed successfully.")

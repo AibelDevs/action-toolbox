@@ -1,11 +1,8 @@
-import os
-import subprocess
 import re
-import json
-import git
-from git import Repo
+import subprocess
 
 from action_tool.utils import set_env, set_output
+from git import Repo
 
 
 def add_commit_for_semantic_release_calculation(repo_path, title):
@@ -15,6 +12,7 @@ def add_commit_for_semantic_release_calculation(repo_path, title):
     repo.config_writer().set_value("user", "name", "dummy").release()
     repo.index.commit(title, allow_empty=True)
 
+
 def get_latest_release_tag(repo_path):
     print("Getting latest release tag")
     repo = Repo(repo_path)
@@ -23,6 +21,7 @@ def get_latest_release_tag(repo_path):
     latest_semver_tag = semver_tags[-1] if semver_tags else 'v0.0.0'
     set_env("LATEST_RELEASE_TAG", latest_semver_tag)
     return latest_semver_tag
+
 
 def check_calculated_version(labels, toml_file, latest_release_tag):
     print("Checking calculated version from semantic release")
@@ -69,8 +68,3 @@ def check_calculated_version(labels, toml_file, latest_release_tag):
         set_output("new_version", output)
         set_output("release_override_found", forced_release)
         set_output("is_release", "true")
-
-if __name__ == "__main__":
-    add_commit_for_semantic_release_calculation(repo_path, os.getenv('PR_TITLE'))
-    latest_tag = get_latest_release_tag(repo_path)
-    check_calculated_version(["release-auto"], "path/to/config.toml", latest_tag)

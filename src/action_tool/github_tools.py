@@ -53,16 +53,16 @@ def set_labels_if_not_already_created(label_names: list[str]):
 
     for label_name, color in labels_with_colors.items():
         if label_name not in existing_labels or existing_labels[label_name] != color:
-            create_or_update_label(repo, label_name, color)
+            create_or_update_github_repo_label(repo, label_name, color)
 
 
 # Function to get all labels in the repository with their colors
 def get_all_labels_with_colors(repo):
-    return {label.name: label.color for label in repo.get_labels()}
+    return {label.name: label.color for label in repo.get_repo_labels()}
 
 
 # Function to create or update a label in the repository
-def create_or_update_label(repo, label_name, color):
+def create_or_update_github_repo_label(repo, label_name, color):
     try:
         label = repo.get_label(label_name)
         if label.color != color:
@@ -83,7 +83,7 @@ def check_silence_bot_label(pull_request):
     :param pull_request: Pull request object from PyGithub.
     :return: Boolean indicating if 'silence-bot' label is present.
     """
-    labels = [label.name for label in pull_request.get_labels()]
+    labels = [label.name for label in pull_request.get_repo_labels()]
     return 'silence-bot' in labels
 
 

@@ -22,6 +22,7 @@ concurrency:
 env:
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_URL: ${{ github.server_url }}
+  PR_NUMBER: ${{ github.event.pull_request.number }}
   tool_repo: dummyuser/action-toolbox
   tool_branch: main
   config_toml_file: action_config.toml
@@ -162,7 +163,7 @@ jobs:
           GITOPS_REVIEW_OK: ${{ needs.gitops-review.outputs.gitops_review_ok }}
 
           GITHUB_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+
         run: |
           from action_tool.pr_review import perform_pr_final_review
           

@@ -285,15 +285,3 @@ def comment_on_gitea_pr(comment_body, pr_index, gitea_url, repo_owner, repo_name
         raise ValueError(f"Failed to add comment: {response.status_code} - {response.text}")
 
 
-def add_label_to_gitea_pr(labels: list[str], gitea_url, token, repo_owner, repo_name, pr_index):
-    # The URL for adding a label to a pull request
-    url = f'{gitea_url}/repos/{repo_owner}/{repo_name}/pulls/{pr_index}'
-
-    # Set up the headers for authentication
-    headers = {
-        'Authorization': f'token {token}',
-        'Content-Type': 'application/json'
-    }
-
-    # Make the POST request to add the comment
-    response = requests.patch(url, headers=headers, json=payload)
