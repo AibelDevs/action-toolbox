@@ -45,9 +45,9 @@ def create_repository(repo_data: dict, gitea_url: str, token) -> requests.Respon
             "Content-Type": "application/json",
         },
     )
-
+    repo_name = repo_data['name']
     if response.status_code == 201:
-        print("Fake repository created successfully.")
+        print(f"Repository '{repo_name}' created successfully.")
     else:
         raise ValueError(f"Failed to create fake repository: {response.status_code}")
 

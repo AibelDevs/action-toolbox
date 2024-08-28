@@ -204,8 +204,11 @@ def create_action_toolbox_repository(gitea_url, create_dummy_user, created_token
 
     return repo_data
 
+def ignore_git_directory(directory, contents):
+    return [".git"] if ".git" in contents else []
+
 @pytest.fixture(scope="session")
-def mock_proj_a(gitea_container, gitea_url, proj_mono_1, workflows_dir, create_dummy_user, create_fake_repository) -> pathlib.Path:
+def mock_proj_a(gitea_container, gitea_url, proj_mono_1, create_dummy_user, create_fake_repository) -> pathlib.Path:
     username = create_dummy_user["username"]
     password = create_dummy_user["password"]
     repo_name = create_fake_repository["name"]
@@ -218,7 +221,6 @@ def mock_proj_a(gitea_container, gitea_url, proj_mono_1, workflows_dir, create_d
         local_repo = git.Repo.clone_from(repo_url, local_temp_dir)
         # Copy the contents of the mono-repo to the temporary directory
         shutil.copytree(str(proj_mono_1), local_temp_dir, dirs_exist_ok=True)
-        os.environ['GIT_ROOT_DIR'] = local_temp_dir
 
         curr_branch = local_repo.active_branch
 
@@ -234,10 +236,10 @@ def mock_proj_a(gitea_container, gitea_url, proj_mono_1, workflows_dir, create_d
 
 
 @pytest.fixture(scope="session")
-def action_toolbox_proj(gitea_container, gitea_url, proj_mono_1, root_dir, create_dummy_user, create_fake_repository) -> pathlib.Path:
+def action_toolbox_proj(gitea_container, gitea_url, root_dir, create_dummy_user, create_action_toolbox_repository) -> pathlib.Path:
     username = create_dummy_user["username"]
     password = create_dummy_user["password"]
-    repo_name = create_fake_repository["name"]
+    repo_name = create_action_toolbox_repository["name"]
 
     repo_url = f"http://{username}:{password}@{gitea_url.replace('http://', '')}/{username}/{repo_name}.git"
 
@@ -246,9 +248,7 @@ def action_toolbox_proj(gitea_container, gitea_url, proj_mono_1, root_dir, creat
         # Clone a Git repository in the temporary directory
         local_repo = git.Repo.clone_from(repo_url, local_temp_dir)
         # Copy the contents of the mono-repo to the temporary directory
-        shutil.copytree(str(root_dir), pathlib.Path(local_temp_dir), dirs_exist_ok=True)
-        os.environ['GIT_ROOT_DIR'] = local_temp_dir
-
+        shutil.copytree(str(root_dir), pathlib.Path(local_temp_dir), dirs_exist_ok=True, ignore=ignore_git_directory)
         curr_branch = local_repo.active_branch
 
         # Add the username and email
