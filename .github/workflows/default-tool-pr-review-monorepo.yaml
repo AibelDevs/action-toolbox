@@ -153,11 +153,6 @@ jobs:
     outputs:
       review_ok: ${{ steps.comment_body.outputs.review_ok }}
     steps:
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.12
-
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
@@ -172,8 +167,12 @@ jobs:
           ref: ${{ inputs.tool_branch }}
           fetch-depth: 0
 
-      - name: Install dependencies
-        run: |
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - run: |
           pip install .
         working-directory: action_tool
 

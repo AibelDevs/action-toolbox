@@ -20,7 +20,6 @@ def check_monorepo_labels():
         raise Exception("LABELS environment variable is not set")
 
     print(f"labels: {labels}")
-    labels = [lbl["name"] for lbl in labels]
 
     if is_in_github_action():
         set_labels_if_not_already_created(labels)

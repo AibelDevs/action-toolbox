@@ -140,7 +140,7 @@ def get_runner_registration_token(gitea_url: str, admin_username: str, admin_pas
         raise ValueError(f"Failed to retrieve runner registration token: {response.status_code} - {response.text}")
 
 
-def get_gitea_labels(gitea_url: str, owner: str, repo: str, token: str) -> list[str]:
+def get_gitea_labels(gitea_url: str, owner: str, repo: str, token: str) -> list[dict]:
     get_label_url = f"{gitea_url}/api/v1/repos/{owner}/{repo}/labels"
     # Make the POST request to create a repository
     response = requests.get(

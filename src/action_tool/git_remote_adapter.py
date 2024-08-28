@@ -66,7 +66,9 @@ class GiteaRemoteRepo(GitRemoteRepo):
         self.repo = repo
 
     def get_labels(self):
-        return get_gitea_labels(self.url, self.owner, self.repo, self.token)
+        raw_labels = get_gitea_labels(self.url, self.owner, self.repo, self.token)
+        labels = [lbl["name"] for lbl in raw_labels]
+        return labels
 
 
 def get_labels():
