@@ -18,9 +18,9 @@ concurrency:
 jobs:   
   release_if_ok:
     if: github.event.pull_request.merged == true
-    uses: dummyuser/fakerepo/.github/workflows/tool-generate-semantic-version-v2.yaml@main
+    uses: dummyuser/action-toolbox/.github/workflows/tool-generate-semantic-version-v2.yaml@main
     secrets:
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
     with:
-      tool_repo: dummyuser/fakerepo
+      tool_repo: dummyuser/action-toolbox
       tool_branch: main

@@ -191,6 +191,18 @@ def create_fake_repository(gitea_url, create_dummy_user, created_token):
 
     return repo_data
 
+@pytest.fixture(scope="session")
+def create_action_toolbox_repository(gitea_url, create_dummy_user, created_token):
+    # Create a new repository
+    repo_data = {
+        "name": "action-toolbox",
+        "description": "Action toolbox repo",
+        "private": False,
+    }
+
+    create_repository(repo_data, gitea_url, created_token)
+
+    return repo_data
 
 @pytest.fixture(scope="session")
 def mock_proj_a(gitea_container, gitea_url, proj_mono_1, workflows_dir, create_dummy_user, create_fake_repository) -> pathlib.Path:
@@ -206,7 +218,35 @@ def mock_proj_a(gitea_container, gitea_url, proj_mono_1, workflows_dir, create_d
         local_repo = git.Repo.clone_from(repo_url, local_temp_dir)
         # Copy the contents of the mono-repo to the temporary directory
         shutil.copytree(str(proj_mono_1), local_temp_dir, dirs_exist_ok=True)
-        shutil.copytree(str(workflows_dir), pathlib.Path(local_temp_dir) / ".github/workflows", dirs_exist_ok=True)
+        os.environ['GIT_ROOT_DIR'] = local_temp_dir
+
+        curr_branch = local_repo.active_branch
+
+        # Add the username and email
+        local_repo.git.config("user.email", create_dummy_user["email"])
+        local_repo.git.config("user.name", username)
+
+        # Perform any Git-related operations here, e.g., adding and committing files
+        local_repo.git.add(".")
+        local_repo.git.execute(["git", "commit", "-am", "Initial Commit"])
+        local_repo.git.push("origin", curr_branch.name, set_upstream=True)
+        yield pathlib.Path(local_temp_dir)
+
+
+@pytest.fixture(scope="session")
+def action_toolbox_proj(gitea_container, gitea_url, proj_mono_1, root_dir, create_dummy_user, create_fake_repository) -> pathlib.Path:
+    username = create_dummy_user["username"]
+    password = create_dummy_user["password"]
+    repo_name = create_fake_repository["name"]
+
+    repo_url = f"http://{username}:{password}@{gitea_url.replace('http://', '')}/{username}/{repo_name}.git"
+
+    # Create a temporary directory for the local repository
+    with tempfile.TemporaryDirectory() as local_temp_dir:
+        # Clone a Git repository in the temporary directory
+        local_repo = git.Repo.clone_from(repo_url, local_temp_dir)
+        # Copy the contents of the mono-repo to the temporary directory
+        shutil.copytree(str(root_dir), pathlib.Path(local_temp_dir), dirs_exist_ok=True)
         os.environ['GIT_ROOT_DIR'] = local_temp_dir
 
         curr_branch = local_repo.active_branch
@@ -229,7 +269,7 @@ def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_
 
 
 def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token, act_runner_container,
-                      mock_proj_a):
+                      mock_proj_a, action_toolbox_proj):
     git_helper = GitHelper(mock_proj_a)
 
     git_helper.create_branch("feat/new-stuff", push=True)

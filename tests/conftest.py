@@ -5,16 +5,25 @@ import tempfile
 
 import pytest
 
+ROOT_DIR = pathlib.Path(__file__).parent.parent.absolute()
+
 
 @pytest.fixture(scope="session")
 def proj_mono_1() -> pathlib.Path:
-    proj1 = pathlib.Path(__file__).parent.absolute() / "files/proj_mono_1"
+    proj1 = ROOT_DIR / "tests/files/proj_mono_1"
     return proj1
+
 
 @pytest.fixture(scope="session")
 def workflows_dir() -> pathlib.Path:
-    proj1 = pathlib.Path(__file__).parent.parent.absolute() / ".github/workflows"
+    proj1 = ROOT_DIR / ".github/workflows"
     return proj1
+
+
+@pytest.fixture(scope="session")
+def root_dir() -> pathlib.Path:
+    return ROOT_DIR
+
 
 @pytest.fixture
 def tmp_dir() -> pathlib.Path:

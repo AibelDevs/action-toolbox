@@ -18,9 +18,9 @@ concurrency:
 
 jobs:
   review:
-    uses: dummyuser/fakerepo/.github/workflows/default-tool-pr-review-monorepo.yaml@main
+    uses: dummyuser/action-toolbox/.github/workflows/default-tool-pr-review-monorepo.yaml@main
     secrets:
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
     with:
-      tool_repo: dummyuser/fakerepo
+      tool_repo: dummyuser/action-toolbox
       tool_branch: main

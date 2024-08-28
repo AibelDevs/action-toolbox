@@ -29,6 +29,8 @@ COPY --from=docker:latest /usr/local/bin/docker /usr/bin/docker
 
 RUN mkdir -p /repo/gitea_act && \
     git config --global --add safe.directory /repo && \
+    git config --global credential.helper cache && \
+    git config --global credential.helper 'cache --timeout=3600' && \
     git config --global user.email "gitea@self-hosted.com" && \
     git config --global user.name "Gitea runner"
 
