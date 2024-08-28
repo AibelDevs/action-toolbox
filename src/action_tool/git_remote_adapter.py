@@ -53,8 +53,11 @@ class GitRemoteRepo(abc.ABC):
 
     def get_pr_release_label(self):
         rel_labels = set(self.rel_labels_with_color.keys())
-        labels = self.get_pr_labels()
-        rel_label = list(rel_labels.intersection(set(labels)))[0]
+        pr_labels = self.get_pr_labels()
+        intersection = rel_labels.intersection(set(pr_labels))
+        if len(intersection) == 0:
+            raise ValueError(f"Unable to find release labels: {pr_labels=}, {rel_labels=}")
+        rel_label = list(intersection)[0]
         return rel_label
 
     def should_release(self):
@@ -74,10 +77,6 @@ class GitRemoteRepo(abc.ABC):
 
     @abc.abstractmethod
     def get_pr_labels(self):
-        pass
-
-    @abc.abstractmethod
-    def get_pr_release_label(self):
         pass
 
     @abc.abstractmethod
@@ -215,13 +214,22 @@ class GiteaRemoteRepo(GitRemoteRepo):
     def __init__(self, token=None, url=None, repo_owner=None, repo_name=None):
         super().__init__()
         self.token = os.getenv('GITHUB_TOKEN', token)
-        repo_full_name = os.getenv('GITHUB_REPOSITORY')  # This is in the form 'owner/repo'
-        owner, repo = repo_full_name.split('/')
         self.url = os.getenv('GITHUB_URL', url)
-        logger.info(f"Using {owner}/{repo}")
         self.bot_username = "gitea-actions[bot]"
+
+        owner = None
+        repo = None
+        repo_full_name = os.getenv('GITHUB_REPOSITORY')  # This is in the form 'owner/repo'
+        if repo_full_name is not None:
+            try:
+                owner, repo = repo_full_name.split('/')
+                logger.info(f"Using {owner}/{repo}")
+            except ValueError as e:
+                logger.error(f"Failed to load GITHUB_REPOSITORY={repo_full_name}: {e}")
+
         self.owner = owner if repo_owner is None else repo_owner
         self.repo = repo if repo_name is None else repo_name
+
         try:
             self.get_pr_number()
         except ValueError as e:
