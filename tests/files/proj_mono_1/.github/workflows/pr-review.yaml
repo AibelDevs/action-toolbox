@@ -18,9 +18,9 @@ concurrency:
 
 jobs:
   review:
-    uses: AibelDevs/action-toolbox/.github/workflows/default-tool-pr-review-monorepo.yaml@feat/monorepo-support
+    uses: dummyuser/fakerepo/.github/workflows/default-tool-pr-review-monorepo.yaml@main
     secrets:
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
     with:
-      tool_repo: AibelDevs/action-toolbox
-      tool_branch: feat/monorepo-support
+      tool_repo: dummyuser/fakerepo
+      tool_branch: main

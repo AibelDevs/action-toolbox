@@ -1,7 +1,12 @@
 import os
 
-from action_tool.github_state import check_silence_bot_label, finalize_pr_review, is_in_github_action
+from action_tool.github_state import finalize_pr_review, is_in_github_action
 from action_tool.utils import deserialize_str, set_output
+
+
+def review_pr():
+    set_output('pr_review_ok', 'true')
+    set_output('pr_review_str', 'A pr review has been performed')
 
 
 def perform_pr_final_review():

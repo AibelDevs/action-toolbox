@@ -5,6 +5,8 @@ import json
 import git
 from git import Repo
 
+from action_tool.utils import set_env, set_output
+
 
 def add_commit_for_semantic_release_calculation(repo_path, title):
     print(f"Adding commit with title: {title}")

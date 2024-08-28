@@ -148,13 +148,13 @@ def get_runner_registration_token(gitea_url: str, admin_username: str, admin_pas
     Retrieves a runner registration token from the Gitea instance.
     """
     # Construct the API endpoint URL for the runner registration token
-    api_url = f"{gitea_url}/api/v1/admin/actions/runners/registration-token"
+    api_url = f"{gitea_url}/api/v1/admin/runners/registration-token"
 
     # Basic Authentication with admin credentials
     auth = requests.auth.HTTPBasicAuth(admin_username, admin_password)
 
     # Make the API request to get the registration token
-    response = requests.post(api_url, auth=auth)
+    response = requests.get(api_url, auth=auth)
 
     # Check if the request was successful
     if response.status_code == 200:
@@ -166,3 +166,6 @@ def get_runner_registration_token(gitea_url: str, admin_username: str, admin_pas
             raise ValueError("Token not found in the response.")
     else:
         raise ValueError(f"Failed to retrieve runner registration token: {response.status_code} - {response.text}")
+
+def create_gitea_deploy_keys(gitea_url: str, owner: str, repo: str, token: str):
+    ...

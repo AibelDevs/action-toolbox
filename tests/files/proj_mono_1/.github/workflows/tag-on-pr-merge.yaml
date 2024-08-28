@@ -18,9 +18,9 @@ concurrency:
 jobs:   
   release_if_ok:
     if: github.event.pull_request.merged == true
-    uses: AibelDevs/action-toolbox/.github/workflows/tool-generate-semantic-version-v2.yaml@feat/monorepo-support
+    uses: dummyuser/fakerepo/.github/workflows/tool-generate-semantic-version-v2.yaml@main
     secrets:
       SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
     with:
-      tool_repo: AibelDevs/action-toolbox
-      tool_branch: feat/monorepo-support
+      tool_repo: dummyuser/fakerepo
+      tool_branch: main

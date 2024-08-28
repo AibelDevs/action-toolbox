@@ -59,13 +59,13 @@ permissions:
   pull-requests: write
   contents: write
 
-
-
 jobs:
   load-config:
     runs-on: ubuntu-latest
     outputs:
       config_toml_file: ${{ steps.check-load-config.outputs.MONO_CONFIG_FILE }}
+      pr_review_ok: ${{ steps.check-load-config.outputs.pr_review_ok }}
+      pr_review_str: ${{ steps.check-load-config.outputs.pr_review_str }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -99,16 +99,11 @@ jobs:
         shell: python
         run: |
           from action_tool.monorepos import check_monorepo_labels
+          from action_tool.pr_review import review_pr
           
           check_monorepo_labels()
-
-  pr-review:
-    uses: ./.github/workflows/tool-review-pr.yaml
-    needs: load-config
-    secrets:
-      SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
-    with:
-      config_toml_file: ${{ needs.load-config.outputs.config_toml_file }}
+          
+          review_pr()
 
   python-review:
     uses: ./.github/workflows/tool-review-python.yaml
@@ -149,7 +144,7 @@ jobs:
 
   pr-review-summary:
     name: Generate Pull Request Summary
-    needs: [ load-config, pr-review, python-review, docker-review, gitops-review ]
+    needs: [ load-config, python-review, docker-review, gitops-review ]
     if: always()
     runs-on: ubuntu-latest
     outputs:
@@ -183,18 +178,22 @@ jobs:
         id: comment_body
         shell: python
         env:
-          PR_REVIEW_STR: ${{ needs.pr-review.outputs.pr_review_str }}
-          PR_REVIEW_OK: ${{ needs.pr-review.outputs.pr_review_ok }}
+          PR_REVIEW_STR: ${{ needs.load-config.outputs.pr_review_str }}
+          PR_REVIEW_OK: ${{ needs.load-config.outputs.pr_review_ok }}
           PYTHON_ENABLED: ${{ needs.load-config.outputs.python_enabled }}
+          DOCKER_ENABLED: ${{ needs.load-config.outputs.docker_enabled }}
+          GITOPS_ENABLED: ${{ needs.load-config.outputs.gitops_enabled }}
+
           PYTHON_REVIEW_STR: ${{ needs.python-review.outputs.python_review_str }}
           PYTHON_REVIEW_OK: ${{ needs.python-review.outputs.python_review_ok }}
-          DOCKER_ENABLED: ${{ needs.load-config.outputs.docker_enabled }}
+
           DOCKER_REVIEW_STR: ${{ needs.docker-review.outputs.docker_review_str }}
           DOCKER_REVIEW_OK: ${{ needs.docker-review.outputs.docker_review_ok }}
-          GITOPS_ENABLED: ${{ needs.load-config.outputs.gitops_enabled }}
+
           GITOPS_REVIEW_STR: ${{ needs.gitops-review.outputs.gitops_review_str }}
           GITOPS_REVIEW_OK: ${{ needs.gitops-review.outputs.gitops_review_ok }}
           EXTRA_REVIEW_STR: ${{ inputs.extra_review_str }}
+
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

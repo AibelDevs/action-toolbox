@@ -116,7 +116,8 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
             "RUNNER_LABELS": "self-hosted,Linux,X64,ubuntu-latest"
         },
         volumes={
-            "runner_workdir": {"bind": "/runner/_work", "mode": "rw"}
+            "runner_workdir": {"bind": "/runner/_work", "mode": "rw"},
+            "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},  # Mount Docker socket
         },
         name="gitea_runner",
         network=docker_network.name
@@ -192,7 +193,7 @@ def create_fake_repository(gitea_url, create_dummy_user, created_token):
 
 
 @pytest.fixture(scope="session")
-def mock_proj_a(gitea_container, gitea_url, proj_mono_1, create_dummy_user, create_fake_repository) -> pathlib.Path:
+def mock_proj_a(gitea_container, gitea_url, proj_mono_1, workflows_dir, create_dummy_user, create_fake_repository) -> pathlib.Path:
     username = create_dummy_user["username"]
     password = create_dummy_user["password"]
     repo_name = create_fake_repository["name"]
@@ -205,6 +206,7 @@ def mock_proj_a(gitea_container, gitea_url, proj_mono_1, create_dummy_user, crea
         local_repo = git.Repo.clone_from(repo_url, local_temp_dir)
         # Copy the contents of the mono-repo to the temporary directory
         shutil.copytree(str(proj_mono_1), local_temp_dir, dirs_exist_ok=True)
+        shutil.copytree(str(workflows_dir), pathlib.Path(local_temp_dir) / ".github/workflows", dirs_exist_ok=True)
         os.environ['GIT_ROOT_DIR'] = local_temp_dir
 
         curr_branch = local_repo.active_branch
