@@ -4,7 +4,9 @@ import os
 from github import Github
 
 from action_tool.config import logger
-from action_tool.gitea_tools import get_gitea_labels
+from action_tool.gitea_tools import get_gitea_labels, comment_on_gitea_pr
+from action_tool.github_tools import comment_on_pr, check_silence_bot_label
+from action_tool.utils import set_output
 
 
 class GitRemoteRepo(abc.ABC):
@@ -13,6 +15,10 @@ class GitRemoteRepo(abc.ABC):
 
     @abc.abstractmethod
     def get_labels(self):
+        pass
+
+    @abc.abstractmethod
+    def comment_on_pr(self, comment_body, pr_index):
         pass
 
 
@@ -53,6 +59,16 @@ class GithubRemoteRepo(GitRemoteRepo):
     def get_labels(self):
         return {label.name: label.color for label in self.repo.get_labels()}
 
+    def comment_on_pr(self, comment_body, pr_index):
+        pull_request = self.repo.get_pull(int(pr_index))
+        silence_bot = check_silence_bot_label(pull_request)
+
+        if silence_bot:
+            print("Silence bot label found, skipping comment.")
+            set_output('silence_bot', str(silence_bot).lower())
+        else:
+            comment_on_pr(self.repo, pull_request, comment_body)
+
 
 class GiteaRemoteRepo(GitRemoteRepo):
     def __init__(self):
@@ -70,11 +86,5 @@ class GiteaRemoteRepo(GitRemoteRepo):
         labels = [lbl["name"] for lbl in raw_labels]
         return labels
 
-
-def get_labels():
-    if is_in_github_action():
-        ...
-    elif is_in_gitea_action():
-        ...
-    else:
-        return os.getenv("LABELS")
+    def comment_on_pr(self, comment_body, pr_index):
+        comment_on_gitea_pr(comment_body, pr_index, self.url, self.owner, self.repo, self.token)

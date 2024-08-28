@@ -1,3 +1,5 @@
+import pathlib
+import subprocess
 import time
 
 import requests
@@ -196,5 +198,102 @@ def create_gitea_release_labels_if_not_exists(gitea_url: str, owner: str, repo: 
         create_gitea_label(label, gitea_url, owner, repo, token, color=lbl_with_color)
 
 
-def create_gitea_deploy_keys(gitea_url: str, owner: str, repo: str, token: str):
-    ...
+def generate_ssh_keypair(key_name="source_key"):
+    """
+    Generate an SSH key pair.
+    """
+    key_dir = pathlib.Path("/tmp/ssh_keys")
+    key_dir.mkdir(parents=True, exist_ok=True)
+    key_path = key_dir / key_name
+    subprocess.run(["ssh-keygen", "-t", "rsa", "-b", "4096", "-f", str(key_path), "-N", ""])
+
+    with open(f"{key_path}.pub", "r") as pub_key_file:
+        public_key = pub_key_file.read()
+
+    return str(key_path), public_key
+
+
+def add_deploy_key_to_gitea(gitea_url, token, repo_owner, repo_name, public_key):
+    """
+    Add the generated SSH public key as a deploy key to the specified Gitea repository.
+    """
+    headers = {
+        "Authorization": f"token {token}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "title": "Source Deploy Key",
+        "key": public_key,
+        "read_only": False
+    }
+    response = requests.post(
+        f"{gitea_url}/api/v1/repos/{repo_owner}/{repo_name}/keys",
+        headers=headers,
+        json=data
+    )
+    response.raise_for_status()  # Raise an error for bad HTTP response
+
+
+def add_secret_to_gitea(gitea_url, token, repo_owner, repo_name, secret_name, secret_value):
+    """
+    Add a secret to a Gitea repository.
+    """
+    headers = {
+        "Authorization": f"token {token}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "name": secret_name,
+        "data": secret_value  # Use 'data' to represent the secret value
+    }
+    response = requests.put(
+        f"{gitea_url}/api/v1/repos/{repo_owner}/{repo_name}/actions/secrets/{secret_name}",
+        headers=headers,
+        json=data
+    )
+    if response.status_code == 201:
+        print(f"Secret '{secret_name}' added successfully.")
+    else:
+        raise ValueError(f"Failed to add secret: {response.status_code} - {response.text}")
+
+    print(f"Secret '{secret_name}' added to {repo_owner}/{repo_name}.")
+
+
+def comment_on_gitea_pr(comment_body, pr_index, gitea_url, repo_owner, repo_name, token):
+    # Set up the headers for authentication
+    headers = {
+        'Authorization': f'token {token}',
+        'Content-Type': 'application/json'
+    }
+
+    # The URL for adding a comment to a pull request
+    url = f'{gitea_url}/api/v1/repos/{repo_owner}/{repo_name}/pulls/{pr_index}/reviews'
+
+    # The payload containing the comment body
+    payload = {
+        'body': comment_body
+    }
+
+    # Make the POST request to add the comment
+    response = requests.post(url, headers=headers, json=payload)
+
+    # Check the response
+    if response.status_code == 200:
+        print("Comment added successfully!")
+    else:
+        raise ValueError(f"Failed to add comment: {response.status_code} - {response.text}")
+
+
+def add_label_to_gitea_pr(labels: list[str], gitea_url, token, repo_owner, repo_name, pr_index):
+    # The URL for adding a label to a pull request
+    url = f'{gitea_url}/repos/{repo_owner}/{repo_name}/pulls/{pr_index}'
+
+    # Set up the headers for authentication
+    headers = {
+        'Authorization': f'token {token}',
+        'Content-Type': 'application/json'
+    }
+
+    # Make the POST request to add the comment
+    response = requests.patch(url, headers=headers, json=payload)

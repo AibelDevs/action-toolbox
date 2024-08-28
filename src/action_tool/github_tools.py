@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 
-from action_tool.git_remote_adapter import is_in_github_action
 from action_tool.utils import set_output
 
 load_dotenv()
@@ -12,16 +11,9 @@ import os
 
 
 def get_repo() -> github.Repository.Repository:
-    if is_in_github_action():
-        # In GitHub Actions, these environment variables should already be set.
-        token = os.getenv('GITHUB_TOKEN')
-        repo_full_name = os.getenv('GITHUB_REPOSITORY')  # This is in the form 'owner/repo'
-    else:
-        # Local environment or other CI environments
-        token = os.getenv('GITHUB_TOKEN')
-        owner = os.getenv('GITHUB_REPOSITORY_OWNER')
-        repo_name = os.getenv('GITHUB_REPOSITORY_NAME')
-        repo_full_name = f"{owner}/{repo_name}"
+    # In GitHub Actions, these environment variables should already be set.
+    token = os.getenv('GITHUB_TOKEN')
+    repo_full_name = os.getenv('GITHUB_REPOSITORY')  # This is in the form 'owner/repo'
 
     if not token or not repo_full_name:
         raise ValueError("GitHub token or repository information is missing!")
@@ -125,7 +117,7 @@ def comment_on_pr(repo, pull_request, body):
     pull_request.create_issue_comment(body)
 
 
-def finalize_pr_review(body: str):
+def create_final_pr_review_comment(body: str, pr_index):
     repo = get_repo()
     pull_request = repo.get_pull(int(os.getenv('PR_NUMBER')))
 

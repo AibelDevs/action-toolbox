@@ -66,9 +66,12 @@ jobs:
   load-config:
     runs-on: ubuntu-latest
     outputs:
-      config_toml_file: ${{ steps.check-load-config.outputs.MONO_CONFIG_FILE }}
-      pr_review_ok: ${{ steps.check-load-config.outputs.pr_review_ok }}
-      pr_review_str: ${{ steps.check-load-config.outputs.pr_review_str }}
+      config_toml_file: ${{ steps.config.outputs.MONO_CONFIG_FILE }}
+      pr_review_ok: ${{ steps.config.outputs.pr_review_ok }}
+      pr_review_str: ${{ steps.config.outputs.pr_review_str }}
+      docker_enabled: ${{ steps.config.outputs.docker_enabled }}
+      gitops_enabled: ${{ steps.config.outputs.gitops_enabled }}
+      python_enabled: ${{ steps.config.outputs.python_enabled }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -93,7 +96,7 @@ jobs:
         working-directory: action_tool
 
       - name: Check Main config
-        id: check-load-config
+        id: config
         env:
           CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}

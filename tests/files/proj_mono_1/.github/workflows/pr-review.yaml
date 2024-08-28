@@ -16,11 +16,158 @@ concurrency:
   group: pr-lint-checker-${{ github.sha }}
   cancel-in-progress: true
 
+# Due to https://github.com/go-gitea/gitea/issues/31900 calling nested workflows does not work on gitea.
+# But that does not matter. We can run the tests on the workflows themselves
+
+env:
+  GITHUB_REPOSITORY: ${{ github.repository }}
+  GITHUB_URL: ${{ github.server_url }}
+  tool_repo: dummyuser/action-toolbox
+  tool_branch: main
+  config_toml_file: action_config.toml
+
 jobs:
-  review:
-    uses: dummyuser/action-toolbox/.github/workflows/default-tool-pr-review-monorepo.yaml@main
+  load-config:
+    runs-on: ubuntu-latest
+    outputs:
+      config_toml_file: ${{ steps.config.outputs.MONO_CONFIG_FILE }}
+      pr_review_ok: ${{ steps.config.outputs.pr_review_ok }}
+      pr_review_str: ${{ steps.config.outputs.pr_review_str }}
+      docker_enabled: ${{ steps.config.outputs.docker_enabled }}
+      gitops_enabled: ${{ steps.config.outputs.gitops_enabled }}
+      python_enabled: ${{ steps.config.outputs.python_enabled }}
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          fetch-depth: 0
+
+      - name: Checkout Tool
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.tool_repo }}
+          path: action_tool
+          ref: ${{ env.tool_branch }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - run: pip install .
+        working-directory: action_tool
+
+      - name: Check Main config
+        id: config
+        env:
+          CONFIG_TOML_FILE: ${{ env.config_toml_file }}
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          from action_tool.monorepos import check_monorepo_labels
+          from action_tool.pr_review import review_pr
+          
+          check_monorepo_labels()
+          
+          review_pr()
+
+  python-review:
+    uses: dummyuser/action-toolbox/.github/workflows/tool-review-python.yaml@main
+    needs: load-config
+    if: ${{ needs.load-config.outputs.python_enabled == 'true' }}
     secrets:
-      SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
+      CONDA_API_TOKEN: ${{ secrets.CONDA_API_TOKEN }}
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      CUSTOM_PYPI_USERNAME: ${{ secrets.CUSTOM_PYPI_USERNAME }}
+      CUSTOM_PYPI_PASSWORD: ${{ secrets.CUSTOM_PYPI_PASSWORD }}
+      CUSTOM_PYPI_URL: ${{ secrets.CUSTOM_PYPI_URL }}
+      QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
+      QUETZ_URL: ${{ secrets.QUETZ_URL }}
     with:
-      tool_repo: dummyuser/action-toolbox
-      tool_branch: main
+      config_toml_file: ${{ needs.check_label_config.outputs.config_toml_file }}
+
+  docker-review:
+    uses: dummyuser/action-toolbox/.github/workflows/tool-review-docker.yaml@main
+    needs: load-config
+    if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
+    secrets:
+      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
+      CONTAINER_REGISTRY_USERNAME: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+      CONTAINER_REGISTRY_PASSWORD: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+    with:
+      config_toml_file: ${{ needs.load-config.outputs.config_toml_file }}
+
+  gitops-review:
+    uses: dummyuser/action-toolbox/.github/workflows/tool-review-gitops.yaml@main
+    needs: load-config
+    if: ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
+    secrets:
+      CONTAINER_REGISTRY_URL: ${{ secrets.CONTAINER_REGISTRY_URL }}
+      SOURCE_KEY: ${{ secrets.SOURCE_KEY }}
+      GITOPS_KEY: ${{ secrets.GITOPS_KEY }}
+    with:
+      config_toml_file: ${{ needs.check_label_config.outputs.config_toml_file }}
+
+  pr-review-summary:
+    name: Generate Pull Request Summary
+    needs: [ load-config, python-review, docker-review, gitops-review ]
+    if: always()
+    runs-on: ubuntu-latest
+    outputs:
+      review_ok: ${{ steps.comment_body.outputs.review_ok }}
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          fetch-depth: 0
+
+      - name: Checkout Tool
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.tool_repo }}
+          path: action_tool
+          ref: ${{ env.tool_branch }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - run: |
+          pip install .
+        working-directory: action_tool
+
+      - name: Review all results and write a summary
+        id: comment_body
+        shell: python
+        env:
+          PR_REVIEW_STR: ${{ needs.load-config.outputs.pr_review_str }}
+          PR_REVIEW_OK: ${{ needs.load-config.outputs.pr_review_ok }}
+          PYTHON_ENABLED: ${{ needs.load-config.outputs.python_enabled }}
+          DOCKER_ENABLED: ${{ needs.load-config.outputs.docker_enabled }}
+          GITOPS_ENABLED: ${{ needs.load-config.outputs.gitops_enabled }}
+
+          PYTHON_REVIEW_STR: ${{ needs.python-review.outputs.python_review_str }}
+          PYTHON_REVIEW_OK: ${{ needs.python-review.outputs.python_review_ok }}
+
+          DOCKER_REVIEW_STR: ${{ needs.docker-review.outputs.docker_review_str }}
+          DOCKER_REVIEW_OK: ${{ needs.docker-review.outputs.docker_review_ok }}
+
+          GITOPS_REVIEW_STR: ${{ needs.gitops-review.outputs.gitops_review_str }}
+          GITOPS_REVIEW_OK: ${{ needs.gitops-review.outputs.gitops_review_ok }}
+
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          from action_tool.pr_review import perform_pr_final_review
+          
+          perform_pr_final_review()
+
+      - name: Fail if linting failed
+        if: steps.comment_body.outputs.review_ok == 'false'
+        run: exit 1

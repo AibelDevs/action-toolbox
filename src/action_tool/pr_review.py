@@ -1,7 +1,7 @@
 import os
 
-from action_tool.github_tools import finalize_pr_review
-from action_tool.git_remote_adapter import is_in_github_action
+from action_tool.github_tools import create_final_pr_review_comment
+from action_tool.git_remote_adapter import is_in_github_action, is_in_gitea_action, get_git_remote_adapter
 from action_tool.utils import deserialize_str, set_output
 
 
@@ -49,5 +49,7 @@ def perform_pr_final_review():
     # Set the output
     set_output('body', body, True)
 
-    if is_in_github_action():
-        finalize_pr_review(body)
+    git_remote_adapter = get_git_remote_adapter()
+    git_remote_adapter.comment_on_pr(body, os.getenv('PR_NUMBER'))
+
+    print(body)

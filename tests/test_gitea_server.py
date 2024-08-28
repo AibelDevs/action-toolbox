@@ -1,3 +1,4 @@
+import os
 import pathlib
 import shutil
 import tempfile
@@ -12,8 +13,9 @@ from docker.errors import NotFound
 from action_tool.git_helper import GitHelper
 from action_tool.gitea_tools import get_gitea_token, create_repository, \
     create_gitea_pull_request, get_runner_registration_token, create_gitea_label, \
-    create_gitea_release_labels_if_not_exists
+    create_gitea_release_labels_if_not_exists, generate_ssh_keypair, add_deploy_key_to_gitea, add_secret_to_gitea
 from action_tool.git_remote_adapter import is_in_github_action, is_in_gitea_action
+from action_tool.utils import encode_ssh_key
 from tests.conftest import proj_mono_1
 
 
@@ -90,7 +92,7 @@ def gitea_container(docker_network):
 
 
 @pytest.fixture(scope="session")
-def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, docker_network):
+def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, docker_network, created_token):
     client = get_docker_env()
 
     dockerfile_path = pathlib.Path(__file__).parent.absolute() / "files/runner.Dockerfile"
@@ -108,6 +110,30 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
     runner_token = get_runner_registration_token(gitea_url, create_dummy_user["username"],
                                                  create_dummy_user["password"])
 
+    # Generate SSH key pair for the source key
+    key_path, public_key = generate_ssh_keypair()
+
+    # Add the public key as a deploy key in the Gitea repository
+    add_deploy_key_to_gitea(
+        gitea_url=gitea_url,
+        token=created_token,  # Assume the token is available
+        repo_owner=create_dummy_user["username"],
+        repo_name=create_fake_repository["name"],
+        public_key=public_key
+    )
+
+    # Base64 encode the private key and add it as a secret to the Gitea repository
+    encoded_private_key = encode_ssh_key(key_path)
+
+    add_secret_to_gitea(
+        gitea_url=gitea_url,
+        token=created_token,
+        repo_owner=create_dummy_user["username"],
+        repo_name=create_fake_repository["name"],
+        secret_name="SOURCE_KEY",
+        secret_value=encoded_private_key
+    )
+
     # Start the Gitea runner container
     container = client.containers.run(
         runner_image,
@@ -118,14 +144,28 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
             "RUNNER_NAME": f"{create_dummy_user['username']}-runner",
             "RUNNER_REPOSITORY": f"{create_dummy_user['username']}/{create_fake_repository['name']}",
             "RUNNER_WORKDIR": "/runner/_work",
-            "RUNNER_LABELS": "self-hosted,Linux,X64,ubuntu-latest"
+            "RUNNER_LABELS": "self-hosted,Linux,X64,ubuntu-latest",
+            "GITEA_TOKEN": created_token,  # Token used for HTTP authentication
         },
         volumes={
             "runner_workdir": {"bind": "/runner/_work", "mode": "rw"},
             "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},  # Mount Docker socket
         },
         name="gitea_runner",
-        network=docker_network.name
+        network=docker_network.name,
+        command=[
+            "/bin/bash", "-c",
+            """
+            echo "http://dummyuser:${GITEA_TOKEN}@pytest_gitea:3000" > /root/.git-credentials && \
+            git config --global credential.helper 'store --file=/root/.git-credentials' && \
+            git config --global --add safe.directory /repo && \
+            git config --global credential.helper cache && \
+            git config --global credential.helper 'cache --timeout=3600' && \
+            git config --global user.email "gitea@self-hosted.com" && \
+            git config --global user.name "Gitea runner" && \
+            /app/act_runner
+            """
+        ]
     )
 
     time.sleep(10)  # Give the runner some time to register
@@ -135,6 +175,8 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
     # Cleanup after the tests
     container.stop()
     container.remove()
+    os.remove(key_path)
+    os.remove(f"{key_path}.pub")
 
 
 @pytest.fixture(scope="session")
@@ -222,7 +264,8 @@ def mock_proj_a(gitea_container, gitea_url, proj_mono_1, create_dummy_user, crea
     repo_name = create_fake_repository["name"]
 
     repo_url = f"http://{username}:{password}@{gitea_url.replace('http://', '')}/{username}/{repo_name}.git"
-
+    # ssh_git_url = gitea_url.replace('http://', '').replace('3000', '2222')
+    # repo_url = f"git@{ssh_git_url}:{username}/{repo_name}.git"
     # Create a temporary directory for the local repository
     with tempfile.TemporaryDirectory() as local_temp_dir:
         # Clone a Git repository in the temporary directory
@@ -251,7 +294,8 @@ def action_toolbox_proj(gitea_container, gitea_url, root_dir, create_dummy_user,
     repo_name = create_action_toolbox_repository["name"]
 
     repo_url = f"http://{username}:{password}@{gitea_url.replace('http://', '')}/{username}/{repo_name}.git"
-
+    # ssh_git_url = gitea_url.replace('http://', '').replace('3000', '2222')
+    # repo_url = f"git@{ssh_git_url}:{username}/{repo_name}.git"
     # Create a temporary directory for the local repository
     with tempfile.TemporaryDirectory() as local_temp_dir:
         # Clone a Git repository in the temporary directory
@@ -277,19 +321,17 @@ def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_
     print("Gitea setup and tests passed successfully.")
 
 
-def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token,
-                      act_runner_container,
-                      mock_proj_a, action_toolbox_proj):
-    git_helper = GitHelper(mock_proj_a)
-
-    git_helper.create_branch("feat/new-stuff", push=True)
+def test_pr_review(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token,
+                   act_runner_container, mock_proj_a, action_toolbox_proj):
+    git_local_helper = GitHelper(mock_proj_a)
+    git_local_helper.create_branch("feat/new-stuff", push=True)
 
     # Add a dummy file
     with open(mock_proj_a / "src/packages/a_sample_project/new_file.txt", "w") as f:
         f.write("This is a new file.")
 
-    git_helper.commit("I'm adding a new file.")
-    git_helper.push()
+    git_local_helper.commit("I'm adding a new file.")
+    git_local_helper.push()
 
     username = create_dummy_user["username"]
     repo_name = create_fake_repository["name"]
@@ -301,4 +343,9 @@ def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake
     create_gitea_pull_request(gitea_url, username, repo_name, created_token, "feat: new-stuff", "feat/new-stuff",
                               "main")
 
-    print("Gitea upload tests passed successfully.")
+    # wait for all checks to complete using a while loop
+    ...
+
+    # get the PR review comment and evaluate its contents
+    # Todo: add tests to check that the PR bot has created the correct message
+    print("Gitea PR review passed successfully.")
