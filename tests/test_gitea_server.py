@@ -16,7 +16,6 @@ from action_tool.gitea_tools import get_gitea_token, create_repository, \
     create_gitea_release_labels_if_not_exists, generate_ssh_keypair, add_deploy_key_to_gitea, add_secret_to_gitea
 from action_tool.git_remote_adapter import is_in_github_action, is_in_gitea_action
 from action_tool.utils import encode_ssh_key
-from tests.conftest import proj_mono_1
 
 
 def get_docker_env():
@@ -144,28 +143,14 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
             "RUNNER_NAME": f"{create_dummy_user['username']}-runner",
             "RUNNER_REPOSITORY": f"{create_dummy_user['username']}/{create_fake_repository['name']}",
             "RUNNER_WORKDIR": "/runner/_work",
-            "RUNNER_LABELS": "self-hosted,Linux,X64,ubuntu-latest",
-            "GITEA_TOKEN": created_token,  # Token used for HTTP authentication
+            "RUNNER_LABELS": "self-hosted,Linux,X64,ubuntu-latest"
         },
         volumes={
             "runner_workdir": {"bind": "/runner/_work", "mode": "rw"},
             "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},  # Mount Docker socket
         },
         name="gitea_runner",
-        network=docker_network.name,
-        command=[
-            "/bin/bash", "-c",
-            """
-            echo "http://dummyuser:${GITEA_TOKEN}@pytest_gitea:3000" > /root/.git-credentials && \
-            git config --global credential.helper 'store --file=/root/.git-credentials' && \
-            git config --global --add safe.directory /repo && \
-            git config --global credential.helper cache && \
-            git config --global credential.helper 'cache --timeout=3600' && \
-            git config --global user.email "gitea@self-hosted.com" && \
-            git config --global user.name "Gitea runner" && \
-            /app/act_runner
-            """
-        ]
+        network=docker_network.name
     )
 
     time.sleep(10)  # Give the runner some time to register
