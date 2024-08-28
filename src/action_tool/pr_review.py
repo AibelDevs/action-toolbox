@@ -29,7 +29,7 @@ def review_pr():
     # Check PR title
     title = git_remote.get_pr_title()
     if check_pr_title(title):
-        body_review_str += "\n * ✅ PR title is ok"
+        body_review_str += "\n * ✅ PR title is OK"
     else:
         body_review_str += "\n * ❌ You need to start PR title with fix: feat: fix!: feat!: chore:"
 

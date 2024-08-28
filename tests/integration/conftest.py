@@ -237,8 +237,13 @@ def create_action_toolbox_repository(gitea_url, create_dummy_user, created_token
     return repo_data
 
 
-def ignore_git_directory(directory, contents):
-    return [".git"] if ".git" in contents else []
+def directory_ignore_func(directory, contents):
+    ignore_list = []
+    if ".git" in contents:
+        ignore_list.append(".git")
+    if "ci-testing.yaml" in contents:
+        ignore_list.append("ci-testing.yaml")
+    return ignore_list
 
 
 @pytest.fixture(scope="session")
@@ -285,7 +290,7 @@ def action_toolbox_proj(gitea_container, gitea_url, root_dir, create_dummy_user,
         # Clone a Git repository in the temporary directory
         local_repo = git.Repo.clone_from(repo_url, local_temp_dir)
         # Copy the contents of the mono-repo to the temporary directory
-        shutil.copytree(str(root_dir), pathlib.Path(local_temp_dir), dirs_exist_ok=True, ignore=ignore_git_directory)
+        shutil.copytree(str(root_dir), pathlib.Path(local_temp_dir), dirs_exist_ok=True, ignore=directory_ignore_func)
         curr_branch = local_repo.active_branch
 
         # Add the username and email

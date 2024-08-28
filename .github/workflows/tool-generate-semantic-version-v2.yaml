@@ -34,6 +34,10 @@ on:
       SOURCE_KEY:
         required: false
 
+permissions:
+  pull-requests: read
+  contents: read
+
 env:
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_URL: ${{ github.server_url }}
