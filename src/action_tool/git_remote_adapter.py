@@ -1,5 +1,6 @@
 import abc
 import os
+import json
 
 from github import Github
 
@@ -100,7 +101,7 @@ class LocalGitRemoteRepo(GitRemoteRepo):
         super().__init__()
 
     def get_labels(self):
-        return []
+        return json.loads(os.environ["LABELS"])
 
     def comment_on_pr(self, comment_body, pr_index):
         print(f"Comment:\n{comment_body} on {pr_index}")

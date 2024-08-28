@@ -22,7 +22,11 @@ def get_docker_env():
     if is_in_github_action() or is_in_gitea_action():
         client = docker.from_env()
     else:  # Running locally
-        client = docker.DockerClient(base_url='tcp://localhost:2375')
+        try:
+            client = docker.DockerClient(base_url='tcp://localhost:2375')
+        except docker.errors.DockerException:
+            client = docker.from_env()
+
     return client
 
 
