@@ -1,4 +1,3 @@
-import os
 import pathlib
 import shutil
 import tempfile
@@ -11,10 +10,12 @@ import requests
 from docker.errors import NotFound
 
 from action_tool.git_helper import GitHelper
-from action_tool.gitea_tools import get_gitea_token, create_repository, upload_files_to_repo, get_or_create_gitea_token, \
-    create_gitea_pull_request, get_runner_registration_token
-from action_tool.github_state import is_in_github_action
+from action_tool.gitea_tools import get_gitea_token, create_repository, \
+    create_gitea_pull_request, get_runner_registration_token, create_gitea_label, \
+    create_gitea_release_labels_if_not_exists
+from action_tool.remote_git_adapter import is_in_github_action
 from tests.conftest import proj_mono_1
+
 
 def get_docker_env():
     if is_in_github_action():
@@ -22,6 +23,7 @@ def get_docker_env():
     else:
         client = docker.DockerClient(base_url='tcp://localhost:2375')
     return client
+
 
 @pytest.fixture(scope="session")
 def docker_network():
@@ -38,6 +40,7 @@ def docker_network():
 
     # Optionally remove the network after the tests
     network.remove()
+
 
 @pytest.fixture(scope="session")
 def gitea_container(docker_network):
@@ -99,9 +102,11 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
         client.images.get(runner_image)
     except docker.errors.ImageNotFound:
         print(f"Building {runner_image}...")
-        client.images.build(path=dockerfile_path.parent.as_posix(), dockerfile=dockerfile_path.as_posix(), tag=runner_image)
+        client.images.build(path=dockerfile_path.parent.as_posix(), dockerfile=dockerfile_path.as_posix(),
+                            tag=runner_image)
 
-    runner_token = get_runner_registration_token(gitea_url, create_dummy_user["username"], create_dummy_user["password"])
+    runner_token = get_runner_registration_token(gitea_url, create_dummy_user["username"],
+                                                 create_dummy_user["password"])
 
     # Start the Gitea runner container
     container = client.containers.run(
@@ -191,6 +196,7 @@ def create_fake_repository(gitea_url, create_dummy_user, created_token):
 
     return repo_data
 
+
 @pytest.fixture(scope="session")
 def create_action_toolbox_repository(gitea_url, create_dummy_user, created_token):
     # Create a new repository
@@ -204,8 +210,10 @@ def create_action_toolbox_repository(gitea_url, create_dummy_user, created_token
 
     return repo_data
 
+
 def ignore_git_directory(directory, contents):
     return [".git"] if ".git" in contents else []
+
 
 @pytest.fixture(scope="session")
 def mock_proj_a(gitea_container, gitea_url, proj_mono_1, create_dummy_user, create_fake_repository) -> pathlib.Path:
@@ -236,7 +244,8 @@ def mock_proj_a(gitea_container, gitea_url, proj_mono_1, create_dummy_user, crea
 
 
 @pytest.fixture(scope="session")
-def action_toolbox_proj(gitea_container, gitea_url, root_dir, create_dummy_user, create_action_toolbox_repository) -> pathlib.Path:
+def action_toolbox_proj(gitea_container, gitea_url, root_dir, create_dummy_user,
+                        create_action_toolbox_repository) -> pathlib.Path:
     username = create_dummy_user["username"]
     password = create_dummy_user["password"]
     repo_name = create_action_toolbox_repository["name"]
@@ -268,7 +277,8 @@ def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_
     print("Gitea setup and tests passed successfully.")
 
 
-def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token, act_runner_container,
+def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token,
+                      act_runner_container,
                       mock_proj_a, action_toolbox_proj):
     git_helper = GitHelper(mock_proj_a)
 
@@ -282,6 +292,9 @@ def test_gitea_upload(gitea_container, gitea_url, create_dummy_user, create_fake
 
     username = create_dummy_user["username"]
     repo_name = create_fake_repository["name"]
+
+    create_gitea_release_labels_if_not_exists(gitea_url, username, repo_name, created_token)
+    create_gitea_label("a-sample-project", gitea_url, username, repo_name, created_token)
 
     # make a PR
     create_gitea_pull_request(gitea_url, username, repo_name, created_token, "feat: new-stuff", "feat/new-stuff",

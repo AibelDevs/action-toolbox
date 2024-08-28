@@ -1,4 +1,3 @@
-import base64
 import time
 
 import requests
@@ -18,7 +17,7 @@ def get_gitea_token(gitea_url: str, username: str, password: str) -> str:
 
     data = {
         "name": token_name,  # Use the unique token name
-        "scopes": ["write:user", "write:repository"]  # You can add other scopes as needed
+        "scopes": ["write:user", "write:repository", "read:issue", "write:issue"]  # You can add other scopes as needed
     }
 
     # Send the POST request to create a token
@@ -52,35 +51,6 @@ def create_repository(repo_data: dict, gitea_url: str, token) -> requests.Respon
         raise ValueError(f"Failed to create fake repository: {response.status_code}")
 
     return response
-
-
-# Function to upload files to the repo
-def upload_files_to_repo(gitea_url: str, owner: str, repo: str, token: str, files: dict, commit_message: str):
-    upload_url = f"{gitea_url}/api/v1/repos/{owner}/{repo}/contents/"
-
-    # Iterate over each file you want to upload
-    for file_path, file_content in files.items():
-        # Base64 encode the file content as required by the API
-        encoded_content = base64.b64encode(file_content.encode('utf-8')).decode('utf-8')
-
-        # Define the request payload
-        data = {
-            "content": encoded_content,
-            "message": commit_message,
-        }
-
-        # Upload each file
-        response = requests.post(
-            f"{upload_url}{file_path}",
-            headers={"Authorization": f"token {token}", "Content-Type": "application/json"},
-            json=data
-        )
-
-        # Check if the upload was successful
-        if response.status_code == 201:
-            print(f"File '{file_path}' uploaded successfully.")
-        else:
-            print(f"Failed to upload '{file_path}': {response.status_code} - {response.text}")
 
 
 def list_gitea_tokens(gitea_url: str, username: str, password: str):
@@ -123,6 +93,7 @@ def get_or_create_gitea_token(gitea_url: str, username: str, password: str, toke
     # Create a new token with the desired name
     return get_gitea_token(gitea_url, username, password)
 
+
 def create_gitea_pull_request(gitea_url: str, owner: str, repo: str, token: str, title: str, head: str, base: str):
     pr_url = f"{gitea_url}/api/v1/repos/{owner}/{repo}/pulls"
 
@@ -142,6 +113,7 @@ def create_gitea_pull_request(gitea_url: str, owner: str, repo: str, token: str,
         print(f"Pull request created successfully: {response.json().get('html_url')}")
     else:
         raise ValueError(f"Failed to create pull request: {response.status_code} - {response.text}")
+
 
 def get_runner_registration_token(gitea_url: str, admin_username: str, admin_password: str) -> str:
     """
@@ -166,6 +138,63 @@ def get_runner_registration_token(gitea_url: str, admin_username: str, admin_pas
             raise ValueError("Token not found in the response.")
     else:
         raise ValueError(f"Failed to retrieve runner registration token: {response.status_code} - {response.text}")
+
+
+def get_gitea_labels(gitea_url: str, owner: str, repo: str, token: str) -> list[str]:
+    get_label_url = f"{gitea_url}/api/v1/repos/{owner}/{repo}/labels"
+    # Make the POST request to create a repository
+    response = requests.get(
+        get_label_url,
+        headers={
+            "Authorization": f"token {token}",
+            "Content-Type": "application/json",
+        },
+    )
+
+    if response.status_code == 200:
+        labels = response.json()
+        return labels
+    else:
+        raise ValueError(f"Failed to retrieve labels: {response.status_code} - {response.text}")
+
+
+def create_gitea_label(label: str, gitea_url: str, owner: str, repo: str, token: str, color: str = "#00aabb"):
+    create_label_url = f"{gitea_url}/api/v1/repos/{owner}/{repo}/labels"
+    label_data = {
+        "name": label,
+        "color": color
+    }
+    # Make the POST request to create a repository
+    response = requests.post(
+        create_label_url,
+        json=label_data,
+        headers={
+            "Authorization": f"token {token}",
+            "Content-Type": "application/json",
+        },
+    )
+    if response.status_code == 201:
+        print(f"Label '{label}' created successfully.")
+    else:
+        raise ValueError(f"Failed to create label: {response.status_code} - {response.text}")
+
+
+def create_gitea_release_labels_if_not_exists(gitea_url: str, owner: str, repo: str, token: str):
+    lbls_with_color = {
+        'release-skip': 'b3b3b3',  # Gray
+        'release-auto': 'ffff00',  # Yellow
+        'release-patch': '00ff00',  # Green
+        'release-minor': '0000ff',  # Blue
+        'release-major': 'ff0000',  # Red
+        'silence-bot': '000000'  # Black
+    }
+    valid_labels = set(lbls_with_color.keys())
+    existing_labels = set(get_gitea_labels(gitea_url, owner, repo, token))
+    missing_labels = valid_labels - existing_labels
+    for label in missing_labels:
+        lbl_with_color = lbls_with_color[label]
+        create_gitea_label(label, gitea_url, owner, repo, token, color=lbl_with_color)
+
 
 def create_gitea_deploy_keys(gitea_url: str, owner: str, repo: str, token: str):
     ...

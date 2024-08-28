@@ -1,6 +1,7 @@
 import os
 
-from action_tool.github_state import finalize_pr_review, is_in_github_action
+from action_tool.github_tools import finalize_pr_review
+from action_tool.git_remote_adapter import is_in_github_action
 from action_tool.utils import deserialize_str, set_output
 
 

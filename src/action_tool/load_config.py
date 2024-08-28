@@ -34,7 +34,13 @@ class ActionContext:
 
 
 def load_config() -> ActionContext:
-    data = toml.load(os.getenv("CONFIG_TOML_FILE"))
+    config_toml_file = os.getenv("CONFIG_TOML_FILE")
+    if config_toml_file is None:
+        raise ValueError("CONFIG_TOML_FILE environment variable is not set")
+
+    config_toml_file = pathlib.Path(config_toml_file)
+
+    data = toml.load(config_toml_file)
     set_output("toml_data", json.dumps(data), True)
 
     # Docker
@@ -106,8 +112,9 @@ def load_config() -> ActionContext:
         ))
 
     print(data)
+
     return ActionContext(
-        config_toml_file=os.getenv("CONFIG_TOML_FILE"),
+        config_toml_file=config_toml_file,
         config_toml_data=data,
         mono_repo_enabled=mono_repo_enabled,
         docker_enabled=docker_enabled,

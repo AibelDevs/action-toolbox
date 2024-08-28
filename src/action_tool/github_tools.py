@@ -1,6 +1,6 @@
-from action_tool.load_config import load_config
 from dotenv import load_dotenv
 
+from action_tool.remote_git_adapter import is_in_github_action
 from action_tool.utils import set_output
 
 load_dotenv()
@@ -9,10 +9,6 @@ import github.Repository
 from github import Github
 from github.GithubException import GithubException
 import os
-
-
-def is_in_github_action():
-    return os.getenv('GITHUB_ACTIONS') == "true"
 
 
 def get_repo() -> github.Repository.Repository:
