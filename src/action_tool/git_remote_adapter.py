@@ -44,7 +44,8 @@ def get_git_remote_adapter() -> GitRemoteRepo:
         logger.info("Is a Gitea Actions Runner")
         return GiteaRemoteRepo()
     else:
-        raise ValueError('Not a GitHub action')
+        logger.info("running locally")
+        return LocalGitRemoteRepo()
 
 
 class GithubRemoteRepo(GitRemoteRepo):
@@ -88,3 +89,14 @@ class GiteaRemoteRepo(GitRemoteRepo):
 
     def comment_on_pr(self, comment_body, pr_index):
         comment_on_gitea_pr(comment_body, pr_index, self.url, self.owner, self.repo, self.token)
+
+
+class LocalGitRemoteRepo(GitRemoteRepo):
+    def __init__(self):
+        super().__init__()
+
+    def get_labels(self):
+        return []
+
+    def comment_on_pr(self, comment_body, pr_index):
+        print(f"Comment:\n{comment_body} on {pr_index}")
