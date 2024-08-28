@@ -83,7 +83,7 @@ def check_silence_bot_label(pull_request):
     :param pull_request: Pull request object from PyGithub.
     :return: Boolean indicating if 'silence-bot' label is present.
     """
-    labels = [label.name for label in pull_request.get_repo_labels()]
+    labels = [label.name for label in pull_request.get_labels()]
     return 'silence-bot' in labels
 
 
