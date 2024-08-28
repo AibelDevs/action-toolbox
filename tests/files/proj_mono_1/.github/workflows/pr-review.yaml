@@ -74,7 +74,7 @@ jobs:
         id: config
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          HAS_SOURCE_KEY: ${{ jobs.load-config.outputs.has_source_key_secret }}
+          HAS_SOURCE_KEY: ${{ steps.check-source-key.outputs.has_source_key_secret }}
         shell: python
         run: |
           from action_tool.monorepos import check_monorepo_labels

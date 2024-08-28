@@ -58,6 +58,7 @@ env:
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_URL: ${{ github.server_url }}
   PR_NUMBER: ${{ github.event.pull_request.number }}
+  CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
 
 permissions:
   pull-requests: write
@@ -109,9 +110,8 @@ jobs:
       - name: Check Main config
         id: config
         env:
-          CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
           GITHUB_TOKEN: ${{ github.token }}
-          HAS_SOURCE_KEY: ${{ jobs.load-config.outputs.has_source_key_secret }}
+          HAS_SOURCE_KEY: ${{ steps.check-source-key.outputs.has_source_key_secret }}
         shell: python
         run: |
           from action_tool.monorepos import check_monorepo_labels
