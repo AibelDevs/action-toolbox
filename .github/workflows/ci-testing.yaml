@@ -9,15 +9,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: mamba-org/setup-micromamba@v1  # https://github.com/mamba-org/setup-micromamba
         with:
-          python-version: 3.12
-
-      - name: Install package
-        run: |
-          pip install .
-          pip install pytest
+          environment-file: environment.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: 'all'
 
       - name: Run tests
         run: |
