@@ -19,7 +19,7 @@ def review_pr():
     body_review_str = ""
 
     # Check presence of SOURCE_KEY
-    source_key_exists = git_remote.check_if_secret_exists('SOURCE_KEY')
+    source_key_exists = os.getenv('HAS_SOURCE_KEY') == "true"
     if not source_key_exists:
         body_review_str += "\n * ❌ You need to add SOURCE_KEY as a secret to your repo if you want semantic-release to work"
         pr_is_ok = False

@@ -2,7 +2,7 @@ import requests
 
 from action_tool.git_helper import GitHelper
 from action_tool.gitea_tools import create_gitea_pull_request, create_gitea_label, \
-    create_gitea_release_labels_if_not_exists
+    create_gitea_release_labels_if_not_exists, add_secret_to_gitea
 
 
 def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_repository):
@@ -12,11 +12,12 @@ def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_
 
 
 def test_pr_review(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token,
-                   act_runner_container, mock_proj_a, action_toolbox_proj):
+                   act_runner_container, mock_proj_a, action_toolbox_proj, ssh_deploy_key):
+
     git_local_helper = GitHelper(mock_proj_a)
     git_local_helper.create_branch("feat/new-stuff", push=True)
 
-    # Add a dummy file
+    # Add a new file and commit+push
     with open(mock_proj_a / "src/packages/a_sample_project/new_file.txt", "w") as f:
         f.write("This is a new file.")
 
@@ -25,6 +26,15 @@ def test_pr_review(gitea_container, gitea_url, create_dummy_user, create_fake_re
 
     username = create_dummy_user["username"]
     repo_name = create_fake_repository["name"]
+
+    add_secret_to_gitea(
+       gitea_url=gitea_url,
+       token=created_token,
+       repo_owner=create_dummy_user["username"],
+       repo_name=create_fake_repository["name"],
+       secret_name="SOURCE_KEY",
+       secret_value=ssh_deploy_key["encoded_private_key"]
+    )
 
     create_gitea_release_labels_if_not_exists(gitea_url, username, repo_name, created_token)
     create_gitea_label("a-sample-project", gitea_url, username, repo_name, created_token)

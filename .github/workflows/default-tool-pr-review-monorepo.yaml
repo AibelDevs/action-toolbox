@@ -96,12 +96,22 @@ jobs:
       - run: pip install .
         working-directory: action_tool
 
+      - name: check if SOURCE_KEY is set as a secret
+        id: check-source-key
+        run: |
+          if [ -z "${{ secrets.SOURCE_KEY }}" ]; then
+            echo "SOURCE_KEY is not set as a secret"
+            echo "has_source_key_secret=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_source_key_secret=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check Main config
         id: config
         env:
           CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
-          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
           GITHUB_TOKEN: ${{ github.token }}
+          HAS_SOURCE_KEY: ${{ jobs.load-config.outputs.has_source_key_secret }}
         shell: python
         run: |
           from action_tool.monorepos import check_monorepo_labels

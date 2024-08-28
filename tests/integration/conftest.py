@@ -90,6 +90,28 @@ def gitea_container(docker_network):
     container.remove()
     client.volumes.get("pytest_gitea_volume").remove(force=True)
 
+@pytest.fixture(scope="session")
+def ssh_deploy_key(gitea_url, create_dummy_user, create_fake_repository, docker_network, created_token):
+    # Generate SSH key pair for the source key
+    key_path, public_key = generate_ssh_keypair()
+
+    # Add the public key as a deploy key in the Gitea repository
+    add_deploy_key_to_gitea(
+        gitea_url=gitea_url,
+        token=created_token,  # Assume the token is available
+        repo_owner=create_dummy_user["username"],
+        repo_name=create_fake_repository["name"],
+        public_key=public_key
+    )
+
+    # Base64 encode the private key and add it as a secret to the Gitea repository
+    encoded_private_key = encode_ssh_key(key_path)
+    data = dict(encoded_private_key=encoded_private_key)
+    yield data
+
+    os.remove(key_path)
+    os.remove(f"{key_path}.pub")
+
 
 @pytest.fixture(scope="session")
 def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, docker_network, created_token):
@@ -110,29 +132,6 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
     runner_token = get_runner_registration_token(gitea_url, create_dummy_user["username"],
                                                  create_dummy_user["password"])
 
-    # Generate SSH key pair for the source key
-    key_path, public_key = generate_ssh_keypair()
-
-    # Add the public key as a deploy key in the Gitea repository
-    add_deploy_key_to_gitea(
-        gitea_url=gitea_url,
-        token=created_token,  # Assume the token is available
-        repo_owner=create_dummy_user["username"],
-        repo_name=create_fake_repository["name"],
-        public_key=public_key
-    )
-
-    # Base64 encode the private key and add it as a secret to the Gitea repository
-    encoded_private_key = encode_ssh_key(key_path)
-
-    add_secret_to_gitea(
-        gitea_url=gitea_url,
-        token=created_token,
-        repo_owner=create_dummy_user["username"],
-        repo_name=create_fake_repository["name"],
-        secret_name="SOURCE_KEY",
-        secret_value=encoded_private_key
-    )
 
     # Start the Gitea runner container
     container = client.containers.run(
@@ -161,8 +160,7 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
     # Cleanup after the tests
     container.stop()
     container.remove()
-    os.remove(key_path)
-    os.remove(f"{key_path}.pub")
+
 
 
 @pytest.fixture(scope="session")

@@ -106,7 +106,7 @@ class GithubRemoteRepo(GitRemoteRepo):
 
     def get_pr_labels(self):
         try:
-            pr = self.repo.get_pull(self.get_pr_number())
+            pr = self.repo.get_pull(int(self.get_pr_number()))
             labels = [label.name for label in pr.get_labels()]
             return labels
         except Exception as e:
