@@ -21,6 +21,13 @@ def set_env(name, value):
         print(f'{name}={value}', file=fh)
 
 
+def get_env(name, default=None):
+    output_vars = pathlib.Path(os.getenv('GITHUB_ENV')).read_text()
+    env_dict = dict(
+        line.strip().split('=', 1) for line in output_vars.splitlines() if line and not line.startswith('#'))
+    return env_dict.get(name, os.getenv(name, default))
+
+
 def get_output() -> dict:
     output_vars = pathlib.Path(os.getenv('GITHUB_OUTPUT')).read_text()
     return dict(line.strip().split('=', 1) for line in output_vars.splitlines() if line and not line.startswith('#'))

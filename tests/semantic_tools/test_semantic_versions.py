@@ -1,9 +1,6 @@
-import os
-
 from action_tool.git_helper import GitHelper
 from action_tool.load_config import load_config
-from action_tool.pr_version_calc import calculate_version_w_semantic_release, run_semantic_release, \
-    get_override_from_version_diff
+from action_tool.pr_version_calc import calculate_version_w_semantic_release, run_semantic_release
 
 
 def append_a_new_line_to_file(mock_proj_a):
@@ -103,13 +100,12 @@ def test_semantic_versions_branch(mock_local_proj_a_branch):
     append_a_new_line_to_file(mock_local_branch_dir)
     pr_title = "fix: more-stuff"
     git_local_branch.commit(pr_title)
-    git_local_branch.push()
+    # git_local_branch.push()
 
     calculated_next_version = calculate_version_w_semantic_release(rel_label, pr_title, config_file,
                                                                    mock_local_branch_dir)
 
     assert calculated_next_version == "0.1.1"
-    # override_release = get_override_from_version_diff(actual_next_version, calculated_next_version)
     actual_next_version = run_semantic_release(config_file, pr_title, git_dir=mock_local_branch_dir, vcs_release=True)
     assert calculated_next_version == actual_next_version
 

@@ -1,11 +1,10 @@
 import os
-import pathlib
 
 from action_tool.config import logger
 from action_tool.git_remote_adapter import get_git_remote_adapter, PRNoReleaseLabels, PRMultipleReleaseLabels
 from action_tool.load_config import load_config
-from action_tool.pr_version_calc import calculate_version_w_semantic_release, check_git_dir
-from action_tool.utils import deserialize_str, set_output
+from action_tool.pr_version_calc import calculate_version_w_semantic_release, FailedSemantics
+from action_tool.utils import deserialize_str, set_output, get_env
 
 
 def check_pr_title(title: str):
@@ -13,7 +12,7 @@ def check_pr_title(title: str):
     return title.startswith(tuple(valid_pr_title))
 
 
-def review_pr():
+def review_pr(debug_mode=False):
     git_remote = get_git_remote_adapter()
     git_remote.add_missing_repo_labels()
 
@@ -22,7 +21,7 @@ def review_pr():
     body_review_str = ""
 
     # Check presence of SOURCE_KEY
-    source_key_exists = os.getenv('HAS_SOURCE_KEY') == "true"
+    source_key_exists = get_env('HAS_SOURCE_KEY') == "true"
     if not source_key_exists:
         body_review_str += "\n * ❌ You need to add SOURCE_KEY as a secret to your repo if you want semantic-release to work"
         pr_is_ok = False
@@ -50,11 +49,6 @@ def review_pr():
         pr_is_ok = False
         body_review_str += f"\n * {e}"
 
-    if pr_is_ok:
-        header += "I found no pr-related issues.\n"
-    else:
-        header += "I found some pr-related issues:\n\n"
-
     config_toml = load_config()
 
     # Check if monorepo
@@ -78,15 +72,14 @@ def review_pr():
 
             # Calculate semantic version
             if rel_label is not None:
-                git_dir = pathlib.Path(os.getenv("SRC_MAIN_BRANCH_DIR")).resolve().absolute()
-                mono_rel = mono_config_file.relative_to(pathlib.Path(os.getcwd()).absolute())
-                mono_config_file = git_dir / mono_rel
-                next_version = calculate_version_w_semantic_release(rel_label, title, mono_config_file, git_dir=git_dir, debug_mode=True)
-                if next_version == "":
-                    body_review_str += f"\n * ❌ Unable to calculate version based on config file {mono_config_file=} and {git_dir=}"
-                    pr_is_ok = False
-                else:
+                try:
+                    next_version = calculate_version_w_semantic_release(rel_label, title, mono_config_file,
+                                                                        debug_mode=debug_mode)
                     body_review_str += f"\n * ✅ Next version is '{next_version}'"
+                except FailedSemantics as e:
+                    body_review_str += f"\n * ❌ Unable to calculate next semantic version due to \n\n```{e}```"
+                    pr_is_ok = False
+
     else:
         # Calculate semantic version
         if rel_label is not None:
@@ -95,6 +88,11 @@ def review_pr():
                 body_review_str += f"\n * ❌ Unable to calculate version based on config file"
                 pr_is_ok = False
             body_review_str += f"\n * ✅ Next version is '{next_version}'"
+
+    if pr_is_ok:
+        header += "I found no pr-related issues.\n"
+    else:
+        header += "I found some pr-related issues:\n\n"
 
     pr_review_str = header + body_review_str
 
@@ -109,23 +107,23 @@ def perform_pr_final_review():
     review_str = ''
 
     # PR
-    review_str += deserialize_str(os.getenv('PR_REVIEW_STR', ''))
-    all_checks.append(os.getenv('PR_REVIEW_OK', 'false') == 'true')
+    review_str += deserialize_str(get_env('PR_REVIEW_STR', ''))
+    all_checks.append(get_env('PR_REVIEW_OK', 'false') == 'true')
 
     # Python
-    if os.getenv('PYTHON_ENABLED', 'false') == 'true':
-        review_str += deserialize_str(os.getenv('PYTHON_REVIEW_STR', ''))
-        all_checks.append(os.getenv('PYTHON_REVIEW_OK', 'false') == 'true')
+    if get_env('PYTHON_ENABLED', 'false') == 'true':
+        review_str += deserialize_str(get_env('PYTHON_REVIEW_STR', ''))
+        all_checks.append(get_env('PYTHON_REVIEW_OK', 'false') == 'true')
 
     # Docker
-    if os.getenv('DOCKER_ENABLED', 'false') == 'true':
-        review_str += deserialize_str(os.getenv('DOCKER_REVIEW_STR', ''))
-        all_checks.append(os.getenv('DOCKER_REVIEW_OK', 'false') == 'true')
+    if get_env('DOCKER_ENABLED', 'false') == 'true':
+        review_str += deserialize_str(get_env('DOCKER_REVIEW_STR', ''))
+        all_checks.append(get_env('DOCKER_REVIEW_OK', 'false') == 'true')
 
     # GitOps
-    if os.getenv('GITOPS_ENABLED', 'false') == 'true':
-        review_str += deserialize_str(os.getenv('GITOPS_REVIEW_STR', ''))
-        all_checks.append(os.getenv('GITOPS_REVIEW_OK', 'false') == 'true')
+    if get_env('GITOPS_ENABLED', 'false') == 'true':
+        review_str += deserialize_str(get_env('GITOPS_REVIEW_STR', ''))
+        all_checks.append(get_env('GITOPS_REVIEW_OK', 'false') == 'true')
 
     # check if all_checks are true
     if all(all_checks):
@@ -135,8 +133,8 @@ def perform_pr_final_review():
         header = "👋 Hi there! I have checked your PR and found the following:\n\n"
         set_output('review_ok', 'false')
 
-    if os.getenv('EXTRA_REVIEW_STR', ''):
-        review_str += deserialize_str(os.getenv('EXTRA_REVIEW_STR', ''))
+    if get_env('EXTRA_REVIEW_STR', ''):
+        review_str += deserialize_str(get_env('EXTRA_REVIEW_STR', ''))
 
     body = header + review_str
 

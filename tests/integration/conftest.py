@@ -27,7 +27,7 @@ def get_docker_env():
     return client
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def docker_network():
     client = get_docker_env()
 
@@ -44,7 +44,7 @@ def docker_network():
     network.remove()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def gitea_container(docker_network):
     client = get_docker_env()
 
@@ -90,7 +90,7 @@ def gitea_container(docker_network):
     container.remove()
     client.volumes.get("pytest_gitea_volume").remove(force=True)
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def ssh_deploy_key(gitea_url, create_dummy_user, create_fake_repository, docker_network, created_token):
     # Generate SSH key pair for the source key
     key_path, public_key = generate_ssh_keypair()
@@ -113,7 +113,7 @@ def ssh_deploy_key(gitea_url, create_dummy_user, create_fake_repository, docker_
     os.remove(f"{key_path}.pub")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, docker_network, created_token, root_dir):
     client = get_docker_env()
 
@@ -162,12 +162,12 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
 
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def gitea_url():
     return "http://localhost:3000"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def create_dummy_user(gitea_url):
     user_data = {
         "email": "dummy@example.com",
@@ -203,12 +203,12 @@ def create_dummy_user(gitea_url):
     return user_data
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def created_token(gitea_url, create_dummy_user):
     return get_gitea_token(gitea_url, create_dummy_user["username"], create_dummy_user["password"])
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def create_fake_repository(gitea_url, create_dummy_user, created_token):
     # Create a new repository
     repo_data = {
@@ -222,7 +222,7 @@ def create_fake_repository(gitea_url, create_dummy_user, created_token):
     return repo_data
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def create_action_toolbox_repository(gitea_url, create_dummy_user, created_token):
     # Create a new repository
     repo_data = {
@@ -245,7 +245,7 @@ def directory_ignore_func(directory, contents):
     return ignore_list
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def mock_proj_a(gitea_container, gitea_url, proj_mono_1, create_dummy_user, create_fake_repository) -> pathlib.Path:
     username = create_dummy_user["username"]
     password = create_dummy_user["password"]
@@ -274,7 +274,7 @@ def mock_proj_a(gitea_container, gitea_url, proj_mono_1, create_dummy_user, crea
         yield pathlib.Path(local_temp_dir)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def action_toolbox_proj(gitea_container, gitea_url, root_dir, create_dummy_user,
                         create_action_toolbox_repository) -> pathlib.Path:
     username = create_dummy_user["username"]
