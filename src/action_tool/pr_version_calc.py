@@ -81,13 +81,15 @@ def calculate_version_w_semantic_release(release_label, pr_title, toml_file, git
     with run_with_dummy_pr_commit(pr_title, git_dir) as temp_dir:
         toml_file_rel = toml_file.relative_to(git_dir)
         toml_file_dummy = temp_dir / toml_file_rel
-        command = ["semantic-release", "--config", str(toml_file_dummy), "--noop", "version"]
+        command = ["semantic-release", "--config", str(toml_file_dummy), "--noop"]
+
+        if debug_mode:
+            command.append("-v")
+
+        command.append("version")
 
         if forced_release:
             command.append(forced_release)
-
-        if debug_mode:
-            command.append("-vv")
 
         print(f"Running command: {' '.join(command)} using {temp_dir=}, {toml_file_dummy=}")
         result = subprocess.run(command, capture_output=True, text=True, cwd=temp_dir)
