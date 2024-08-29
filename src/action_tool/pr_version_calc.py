@@ -87,7 +87,6 @@ def calculate_version_w_semantic_release(release_label, pr_title, toml_file, git
             command.append(forced_release)
 
         if debug_mode:
-            command.append("--log-level=DEBUG")
             command.append("-vv")
 
         print(f"Running command: {' '.join(command)} using {temp_dir=}, {toml_file_dummy=}")
