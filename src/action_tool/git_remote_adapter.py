@@ -359,6 +359,7 @@ class GiteaRemoteRepo(GitRemoteRepo):
 
 
 class LocalGitRemoteRepo(GitRemoteRepo):
+
     def __init__(self):
         super().__init__()
 
@@ -385,6 +386,12 @@ class LocalGitRemoteRepo(GitRemoteRepo):
 
     def set_pr_label(self, lbl_name: str):
         ...
+
+    def clear_all_previous_pr_bot_comments(self):
+        pass
+
+    def merge_pr(self):
+        pass
 
 
 def get_git_remote_adapter() -> GitRemoteRepo:

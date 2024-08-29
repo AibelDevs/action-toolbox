@@ -114,10 +114,10 @@ def ssh_deploy_key(gitea_url, create_dummy_user, create_fake_repository, docker_
 
 
 @pytest.fixture(scope="session")
-def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, docker_network, created_token):
+def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, docker_network, created_token, root_dir):
     client = get_docker_env()
 
-    dockerfile_path = pathlib.Path(__file__).parent.absolute() / "files/runner.Dockerfile"
+    dockerfile_path = root_dir / "tests/files/runner.Dockerfile"
     # Docker image for the GitHub Actions runner
     runner_image = "my-gitea-runner:latest"
 

@@ -56,7 +56,7 @@ jobs:
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
           fetch-depth: 0
 
       - name: Checkout Tool

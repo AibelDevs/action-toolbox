@@ -33,7 +33,7 @@ jobs:
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
           fetch-depth: 0
 
       - name: Checkout Tool
@@ -55,6 +55,8 @@ jobs:
       - name: Evaluate Release
         shell: python
         id: evaluate-release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           from action_tool.git_remote_adapter import get_git_remote_adapter
           from action_tool.utils import set_output
@@ -80,7 +82,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{github.ref_name}}
+          ref: ${{ github.ref_name }}
           ssh-key: ${{ secrets.SOURCE_KEY }}
 
       - name: Checkout Tool
