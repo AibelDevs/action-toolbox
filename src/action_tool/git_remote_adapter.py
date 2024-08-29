@@ -104,7 +104,7 @@ class GitRemoteRepo(abc.ABC):
         pass
 
     @abstractmethod
-    def merge_pr(self, wait_for_checks=True):
+    def auto_merge_pr(self, wait_for_checks=True):
         pass
 
 
@@ -197,7 +197,7 @@ class GithubRemoteRepo(GitRemoteRepo):
         except Exception as e:
             print(f"An error occurred: {e}")
 
-    def merge_pr(self, wait_for_checks=True):
+    def auto_merge_pr(self, wait_for_checks=True):
         pr_number = self.get_pr_number()
         try:
             pr = self.repo.get_pull(pr_number)
@@ -346,7 +346,7 @@ class GiteaRemoteRepo(GitRemoteRepo):
         except requests.exceptions.RequestException as e:
             print(f"An error occurred: {e}")
 
-    def merge_pr(self, wait_for_checks=True):
+    def auto_merge_pr(self, wait_for_checks=True):
         merge_gitea_pr(self.get_pr_number(), self.url, self.owner, self.repo, self.token, wait_for_checks)
 
 
@@ -382,7 +382,7 @@ class LocalGitRemoteRepo(GitRemoteRepo):
     def clear_all_previous_pr_bot_comments(self):
         pass
 
-    def merge_pr(self, wait_for_checks=True):
+    def auto_merge_pr(self, wait_for_checks=True):
         pass
 
 

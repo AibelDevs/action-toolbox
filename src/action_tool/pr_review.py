@@ -3,7 +3,7 @@ import os
 from action_tool.config import logger
 from action_tool.git_remote_adapter import get_git_remote_adapter, PRNoReleaseLabels, PRMultipleReleaseLabels
 from action_tool.load_config import load_config
-from action_tool.pr_version_calc import calculate_version
+from action_tool.pr_version_calc import calculate_version_w_semantic_release
 from action_tool.utils import deserialize_str, set_output
 
 
@@ -77,17 +77,20 @@ def review_pr():
 
             # Calculate semantic version
             if rel_label is not None:
-                next_version = calculate_version(rel_label, mono_config_file)
-                if next_version == "v":
-                    body_review_str += f"\n * ❌ Unable to calculate version based on config file"
+                next_version = calculate_version_w_semantic_release(rel_label, title, mono_config_file, debug_mode=True)
+                if next_version == "":
+                    body_review_str += f"\n * ❌ Unable to calculate version based on config file {mono_config_file}"
                     pr_is_ok = False
                 else:
-                    body_review_str += f"\n * ✅ Next version is {next_version}"
+                    body_review_str += f"\n * ✅ Next version is '{next_version}'"
     else:
         # Calculate semantic version
         if rel_label is not None:
-            next_version = calculate_version(rel_label, config_toml.config_toml_file)
-            body_review_str += f"\n * ✅ Next version is {next_version}"
+            next_version = calculate_version_w_semantic_release(rel_label, title, config_toml.config_toml_file)
+            if next_version == "":
+                body_review_str += f"\n * ❌ Unable to calculate version based on config file"
+                pr_is_ok = False
+            body_review_str += f"\n * ✅ Next version is '{next_version}'"
 
     pr_review_str = header + body_review_str
 

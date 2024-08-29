@@ -3,9 +3,9 @@ import os
 import requests
 
 from action_tool.git_helper import GitHelper
-from action_tool.git_remote_adapter import get_git_remote_adapter, GiteaRemoteRepo
+from action_tool.git_remote_adapter import GiteaRemoteRepo
 from action_tool.gitea_tools import create_gitea_pull_request, create_gitea_label, \
-    create_gitea_release_labels_if_not_exists, add_secret_to_gitea, merge_gitea_pr
+    create_gitea_release_labels_if_not_exists, add_secret_to_gitea
 
 
 def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_repository):
@@ -90,7 +90,7 @@ def test_on_pr_merge(gitea_container, gitea_url, create_dummy_user, create_fake_
     git_remote_adapter.set_pr_label('release-minor')
     git_remote_adapter.set_pr_label('a-sample-project')
 
-    git_remote_adapter.merge_pr()
+    git_remote_adapter.auto_merge_pr()
 
     # get the PR review comment and evaluate its contents
     # Todo: add tests to check that the PR bot has created the correct message

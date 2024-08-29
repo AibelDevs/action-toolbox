@@ -6,6 +6,7 @@ dependencies:
   - pytest
   - python-dotenv
   - python-semantic-release
+  - semver
   - toml==0.10.2
   - PyGithub
   - docker-py

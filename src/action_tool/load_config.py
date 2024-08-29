@@ -32,16 +32,27 @@ class ActionContext:
 
     mono_repo_project: list[MonoRepo] = field(default_factory=list)
 
-    def get_version(self, specific_mono_repo=None):
+    def get_toml_version(self, specific_mono_repo=None):
         if self.mono_repo_enabled:
             if specific_mono_repo is None:
                 raise ValueError("specific_mono_repo must be set if mono_repo_enabled is True")
             for mono_repo in self.mono_repo_project:
                 if mono_repo.name == specific_mono_repo:
                     config = load_config(mono_repo.config_file)
-                    return config.get_version()
+                    return config.get_toml_version()
 
         return self.config_toml_data["tool"]["action"]["version"]
+
+    def get_(self, pr_title, rel_label, specific_mono_repo=None):
+        if self.mono_repo_enabled:
+            if specific_mono_repo is None:
+                raise ValueError("specific_mono_repo must be set if mono_repo_enabled is True")
+            for mono_repo in self.mono_repo_project:
+                if mono_repo.name == specific_mono_repo:
+                    config = load_config(mono_repo.config_file)
+                    return config.calculate_next_version(pr_title, rel_label)
+
+        return calculate_version(rel_label, pr_title, self.config_toml_file, self.config_toml_data)
 
 def load_config(config_file=None) -> ActionContext:
     config_toml_file = config_file if config_file is not None else os.getenv("CONFIG_TOML_FILE")

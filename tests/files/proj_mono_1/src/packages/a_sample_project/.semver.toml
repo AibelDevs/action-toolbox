@@ -1,5 +1,5 @@
 [tool.action]
-version = "0.1.0"
+version = "0.0.1"
 # This is only relevant for this repository. Normally you will have a version in your package.json or pyproject.toml
 
 [tool.semantic_release]
@@ -61,7 +61,7 @@ patch_tags = ["fix", "perf"]
 
 [tool.semantic_release.remote]
 name = "origin"
-type = "github"
+type = "gitea"
 ignore_token_for_push = true
 
 [tool.semantic_release.remote.token]

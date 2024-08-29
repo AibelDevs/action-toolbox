@@ -20,13 +20,15 @@ concurrency:
 # But that does not matter. We can run the tests on the workflows themselves
 
 env:
-  GITHUB_REPOSITORY: ${{ github.repository }}
-  GITHUB_URL: ${{ github.server_url }}
-  PR_NUMBER: ${{ github.event.pull_request.number }}
   tool_repo: dummyuser/action-toolbox
   tool_branch: main
   CONFIG_TOML_FILE: action_config.toml
-  SRC_MAIN_BRANCH_DIR: __source_main
+  GITHUB_REPOSITORY: ${{ github.repository }}
+  GITHUB_URL: ${{ github.server_url }}
+  PR_NUMBER: ${{ github.event.pull_request.number }}
+  SRC_PR_BRANCH_DIR: ${{ github.workspace }}/__source_pr
+  SRC_MAIN_BRANCH_DIR: ${{ github.workspace }}/__source_main
+  TOOL_PATH_DIR: ${{ github.workspace }}/__action_tool
 
 jobs:
   load-config:
@@ -39,6 +41,14 @@ jobs:
       gitops_enabled: ${{ steps.config.outputs.gitops_enabled }}
       python_enabled: ${{ steps.config.outputs.python_enabled }}
     steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
+          fetch-depth: 0
+          path: ${{ env.SRC_PR_BRANCH_DIR }}
+
+      # Remember to always checkout subdirs last
       - name: Checkout Main Branch
         uses: actions/checkout@v4
         with:
@@ -46,17 +56,11 @@ jobs:
           fetch-depth: 0
           path: ${{ env.SRC_MAIN_BRANCH_DIR }}
 
-      - name: Checkout PR
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
-          fetch-depth: 0
-
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
           repository: ${{ env.tool_repo }}
-          path: action_tool
+          path: ${{ env.TOOL_PATH_DIR }}
           ref: ${{ env.tool_branch }}
           fetch-depth: 0
 
@@ -66,7 +70,7 @@ jobs:
           python-version: 3.12
 
       - run: pip install .
-        working-directory: action_tool
+        working-directory: ${{ env.TOOL_PATH_DIR }}
 
       - name: check if SOURCE_KEY is set as a secret
         id: check-source-key
@@ -88,6 +92,7 @@ jobs:
           from action_tool.pr_review import review_pr
           
           review_pr()
+        working-directory: ${{ env.SRC_PR_BRANCH_DIR }}
 
   python-review:
     uses: dummyuser/action-toolbox/.github/workflows/tool-review-python.yaml@main
