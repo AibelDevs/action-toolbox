@@ -55,9 +55,9 @@ on:
         required: false
 
 env:
-  tool_repo: ${{ input.tool_repo }}
-  tool_branch: ${{ input.tool_branch }}
-  CONFIG_TOML_FILE: action_config.toml
+  tool_repo: ${{ inputs.tool_repo }}
+  tool_branch: ${{ inputs.tool_branch }}
+  CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_URL: ${{ github.server_url }}
   GITHUB_WORKSPACE: ${{ github.workspace }}
