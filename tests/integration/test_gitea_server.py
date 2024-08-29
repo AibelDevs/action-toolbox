@@ -88,6 +88,7 @@ def test_on_pr_merge(gitea_container, gitea_url, create_dummy_user, create_fake_
 
     git_remote_adapter = GiteaRemoteRepo(token=created_token, url=gitea_url, repo_owner=username, repo_name=repo_name)
     git_remote_adapter.set_pr_label('release-minor')
+
     git_remote_adapter.merge_pr()
 
     # get the PR review comment and evaluate its contents

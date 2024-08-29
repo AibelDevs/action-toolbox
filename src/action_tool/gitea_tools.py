@@ -117,16 +117,22 @@ def create_gitea_pull_request(gitea_url: str, owner: str, repo: str, token: str,
         raise ValueError(f"Failed to create pull request: {response.status_code} - {response.text}")
 
 
-def merge_gitea_pr(pr_number, url, owner, repo, token):
+def merge_gitea_pr(pr_number, url, owner, repo, token, wait_for_checks=True):
     headers = {
         "Authorization": f"token {token}",
         "Content-Type": "application/json"
     }
     merge_url = f"{url}/api/v1/repos/{owner}/{repo}/pulls/{pr_number}/merge"
-
-    response = requests.post(merge_url, headers=headers)
+    payload = {
+        "Do": "squash",
+        "merge_when_checks_succeed": wait_for_checks
+    }
+    response = requests.post(merge_url, headers=headers, json=payload)
     if response.status_code == 201:
-        print(f"PR #{pr_number} has been merged successfully.")
+        if wait_for_checks:
+            print(f"PR #{pr_number} will be merged once all checks pass.")
+        else:
+            print(f"PR #{pr_number} has been merged successfully.")
     else:
         raise ValueError(f"Failed to merge PR: {response.status_code} - {response.text}")
 
@@ -219,7 +225,7 @@ def generate_ssh_keypair(key_name="source_key"):
     key_dir = pathlib.Path("/tmp/ssh_keys")
     key_dir.mkdir(parents=True, exist_ok=True)
     key_path = key_dir / key_name
-    subprocess.run(["ssh-keygen", "-t", "rsa", "-b", "4096", "-f", str(key_path), "-N", ""])
+    subprocess.run(["ssh-keygen", "-t", "ed25519", "-f", str(key_path), "-N", ""])
 
     with open(f"{key_path}.pub", "r") as pub_key_file:
         public_key = pub_key_file.read()

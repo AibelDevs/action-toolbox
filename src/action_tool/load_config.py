@@ -32,6 +32,16 @@ class ActionContext:
 
     mono_repo_project: list[MonoRepo] = field(default_factory=list)
 
+    def get_version(self, specific_mono_repo=None):
+        if self.mono_repo_enabled:
+            if specific_mono_repo is None:
+                raise ValueError("specific_mono_repo must be set if mono_repo_enabled is True")
+            for mono_repo in self.mono_repo_project:
+                if mono_repo.name == specific_mono_repo:
+                    config = load_config(mono_repo.config_file)
+                    return config.get_version()
+
+        return self.config_toml_data["tool"]["action"]["version"]
 
 def load_config(config_file=None) -> ActionContext:
     config_toml_file = os.getenv("CONFIG_TOML_FILE", config_file)
@@ -99,7 +109,7 @@ def load_config(config_file=None) -> ActionContext:
             anaconda_server = conda_tool.get("use_anaconda_server", False)
             set_output("anaconda_server", anaconda_server)
 
-    mono_repos_data = data["tool"]["mono_repo"]["project"]
+    mono_repos_data = data["tool"].get("mono_repo", dict()).get("project", [])
     mono_repo_enabled = False
     mono_repo_project = []
     for mono_repo in mono_repos_data:
@@ -110,8 +120,6 @@ def load_config(config_file=None) -> ActionContext:
             path=pathlib.Path(mono_repo["path"]),
             config_file=pathlib.Path(mono_repo["config_file"])
         ))
-
-    print(data)
 
     return ActionContext(
         config_toml_file=config_toml_file,

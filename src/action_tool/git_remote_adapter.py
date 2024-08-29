@@ -11,22 +11,12 @@ from action_tool.utils import set_output
 from github import Github
 
 
-def is_in_github_action():
-    actions = os.getenv('GITHUB_ACTIONS') == "true"
-    git_remote_url = os.getenv('GITHUB_URL')
-    if git_remote_url is None:
-        return
-    logger.info(f"{git_remote_url=}")
-    return actions and 'github' in git_remote_url
+class PRNoReleaseLabels(Exception):
+    pass
 
 
-def is_in_gitea_action():
-    actions = os.getenv('GITEA_ACTIONS') == "true"
-    git_remote_url = os.getenv('GITHUB_URL')
-    if git_remote_url is None:
-        return
-    logger.info(f"{git_remote_url=}")
-    return actions and 'github' not in git_remote_url
+class PRMultipleReleaseLabels(Exception):
+    pass
 
 
 class GitRemoteRepo(abc.ABC):
@@ -57,13 +47,15 @@ class GitRemoteRepo(abc.ABC):
         pr_labels = self.get_pr_labels()
         intersection = rel_labels.intersection(set(pr_labels))
         if len(intersection) == 0:
-            raise ValueError(f"Unable to find release labels: {pr_labels=}, {rel_labels=}")
+            raise PRNoReleaseLabels(f"Unable to find release labels: {pr_labels=}, {rel_labels=}")
+        elif len(intersection) > 1:
+            raise PRMultipleReleaseLabels(f"❌ Multiple labels found {intersection}. You can only assing 1 release label at the time.")
         rel_label = list(intersection)[0]
         return rel_label
 
     def get_custom_labels(self) -> set[str]:
         rel_labels = set(list(self.rel_labels_with_color.keys()) + list(self.bot_labels.keys()))
-        pr_labels = self.get_pr_labels()
+        pr_labels = set(self.get_pr_labels())
         difference = pr_labels - rel_labels
 
         return difference
@@ -112,7 +104,7 @@ class GitRemoteRepo(abc.ABC):
         pass
 
     @abstractmethod
-    def merge_pr(self):
+    def merge_pr(self, wait_for_checks=True):
         pass
 
 
@@ -142,9 +134,9 @@ class GithubRemoteRepo(GitRemoteRepo):
         return {label.name: label.color for label in self.repo.get_labels()}
 
     def get_pr_labels(self):
+        self.get_pr_number()
         try:
-            pr = self.repo.get_pull(int(self.get_pr_number()))
-            labels = [label.name for label in pr.get_labels()]
+            labels = [label.name for label in self.pull_request.get_labels()]
             return labels
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -205,7 +197,7 @@ class GithubRemoteRepo(GitRemoteRepo):
         except Exception as e:
             print(f"An error occurred: {e}")
 
-    def merge_pr(self):
+    def merge_pr(self, wait_for_checks=True):
         pr_number = self.get_pr_number()
         try:
             pr = self.repo.get_pull(pr_number)
@@ -354,8 +346,8 @@ class GiteaRemoteRepo(GitRemoteRepo):
         except requests.exceptions.RequestException as e:
             print(f"An error occurred: {e}")
 
-    def merge_pr(self):
-        merge_gitea_pr(self.get_pr_number(), self.url, self.owner, self.repo, self.token)
+    def merge_pr(self, wait_for_checks=True):
+        merge_gitea_pr(self.get_pr_number(), self.url, self.owner, self.repo, self.token, wait_for_checks)
 
 
 class LocalGitRemoteRepo(GitRemoteRepo):
@@ -390,8 +382,26 @@ class LocalGitRemoteRepo(GitRemoteRepo):
     def clear_all_previous_pr_bot_comments(self):
         pass
 
-    def merge_pr(self):
+    def merge_pr(self, wait_for_checks=True):
         pass
+
+
+def is_in_github_action():
+    actions = os.getenv('GITHUB_ACTIONS') == "true"
+    git_remote_url = os.getenv('GITHUB_URL')
+    if git_remote_url is None:
+        return
+    logger.info(f"{git_remote_url=}")
+    return actions and 'github' in git_remote_url
+
+
+def is_in_gitea_action():
+    actions = os.getenv('GITEA_ACTIONS') == "true"
+    git_remote_url = os.getenv('GITHUB_URL')
+    if git_remote_url is None:
+        return
+    logger.info(f"{git_remote_url=}")
+    return actions and 'github' not in git_remote_url
 
 
 def get_git_remote_adapter() -> GitRemoteRepo:

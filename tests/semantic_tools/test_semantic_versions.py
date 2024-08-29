@@ -23,8 +23,10 @@ def test_semantic_versions_a(mock_local_proj_a):
     next_version = calculate_version(rel_label, config_file, mock_local_proj_a)
 
     assert next_version == "v0.1.0"
-    run_semantic_release(config_file, git_dir=mock_local_proj_a)
+    run_semantic_release(config_file, git_dir=mock_local_proj_a, vcs_release=False)
 
+    updated_config_toml = load_config(config_file)
+    assert updated_config_toml.config_toml_data["tool"]["action"]["version"] == "0.1.0"
     assert changelog_file.exists()
 
     append_a_new_line_to_file(mock_local_proj_a)
@@ -34,4 +36,7 @@ def test_semantic_versions_a(mock_local_proj_a):
     next_version = calculate_version(rel_label, config_file, mock_local_proj_a)
 
     assert next_version == "v0.1.1"
+    run_semantic_release(config_file, git_dir=mock_local_proj_a, vcs_release=False)
     print(next_version)
+    updated_config_toml = load_config(config_file)
+    assert updated_config_toml.config_toml_data["tool"]["action"]["version"] == "0.1.1"

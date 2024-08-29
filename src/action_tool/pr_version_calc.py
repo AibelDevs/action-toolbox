@@ -36,10 +36,14 @@ def calculate_version(release_label, toml_file, git_dir=None):
 
 
 def run_semantic_release(toml_file, release_override: Literal["--patch", "--minor", "--major", None] = None,
-                         git_dir=None):
+                         git_dir=None, vcs_release=True):
     if git_dir is None:
         git_dir = os.getcwd()
-    command = ["semantic-release", "--config", str(toml_file), "version", "--changelog", "--vcs-release"]
+    command = ["semantic-release", "--config", str(toml_file), "version", "--changelog"]
+
+    if vcs_release:
+        command.append("--vcs-release")
+
     if release_override is not None:
         command.append(release_override)
 

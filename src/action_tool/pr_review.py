@@ -1,7 +1,9 @@
 import os
 
 from action_tool.config import logger
-from action_tool.git_remote_adapter import get_git_remote_adapter
+from action_tool.git_remote_adapter import get_git_remote_adapter, PRNoReleaseLabels, PRMultipleReleaseLabels
+from action_tool.load_config import load_config
+from action_tool.pr_version_calc import calculate_version
 from action_tool.utils import deserialize_str, set_output
 
 
@@ -34,23 +36,51 @@ def review_pr():
         body_review_str += "\n * ❌ You need to start PR title with fix: feat: fix!: feat!: chore:"
 
     # Check if a release label is set
-    label_names = git_remote.get_pr_labels()
-    valid_labels = set(git_remote.rel_labels_with_color.keys())
-    intersect_labels = valid_labels.intersection(set(label_names))
-    if len(intersect_labels) == 0:
-        logger.info("No release label assigned. Applying default PR label 'release-skip'")
-        git_remote.set_pr_label('release-skip')
-        body_review_str += "\n * ✅ Release label is OK"
-    elif len(intersect_labels) == 1:
+    rel_label = None
+    try:
+        rel_label = git_remote.get_pr_release_label()
         body_review_str += f"\n * ✅ Release label is OK"
-    else:
+    except PRNoReleaseLabels:
+        logger.info("No release label assigned. Applying default PR label 'release-skip'")
+        rel_label = 'release-skip'
+        git_remote.set_pr_label(rel_label)
+        body_review_str += "\n * ✅ Release label is OK"
+    except PRMultipleReleaseLabels as e:
         pr_is_ok = False
-        body_review_str += f"\n * ❌ Multiple labels found {intersect_labels}. You can only assing 1 release label at the time."
+        body_review_str += f"\n * {e}"
 
     if pr_is_ok:
         header += "I found no pr-related issues.\n"
     else:
         header += "I found some pr-related issues:\n\n"
+
+    config_toml = load_config()
+
+    # Check if monorepo
+    if config_toml.mono_repo_enabled:
+        custom_labels = git_remote.get_custom_labels()
+        mono_repos_dict = {x.name: x for x in config_toml.mono_repo_project}
+        mono_repos_set = set(mono_repos_dict.keys())
+        mono_proj_intersection = custom_labels.intersection(mono_repos_set)
+        if len(mono_proj_intersection) == 0:
+            body_review_str += f"\n * ❌ Monorepo label is not set. Please use one of the following labels: {mono_repos_set}"
+            pr_is_ok = False
+        elif len(mono_proj_intersection) > 1:
+            body_review_str += f"\n * ❌ Multiple monorepo labels are set. Please use only one of the following labels: {mono_repos_set}"
+            pr_is_ok = False
+        else:
+            body_review_str += f"\n * ✅ Monorepo label is OK"
+            config_file = config_toml.get_version()
+
+            # Calculate semantic version
+            if rel_label is not None:
+                next_version = calculate_version(rel_label, config_file)
+                body_review_str += f"\n * ✅ Next version is {next_version}"
+    else:
+        # Calculate semantic version
+        if rel_label is not None:
+            next_version = calculate_version(rel_label, config_toml.config_toml_file)
+            body_review_str += f"\n * ✅ Next version is {next_version}"
 
     pr_review_str = header + body_review_str
 
