@@ -53,6 +53,7 @@ jobs:
     outputs:
       should_make_a_release: ${{ steps.evaluate-release.outputs.should_make_release }}
       release_label: ${{ steps.evaluate-release.outputs.release_label }}
+      pr_title: ${{ steps.evaluate-release.outputs.pr_title }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -89,7 +90,9 @@ jobs:
           if git_remote.should_release():
               set_output("should_make_release", "true")
               rel_label = git_remote.get_pr_release_label()
+              pr_title = git_remote.get_pr_title()
               set_output("release_label", rel_label)
+              set_output("pr_title", pr_title) 
           else:
               set_output("should_make_release", "false")
   
@@ -129,21 +132,19 @@ jobs:
         shell: python
         env:
           RELEASE_LABEL: ${{ needs.eval-release.outputs.release_label }}
+          PR_TITLE: ${{ needs.eval-release.outputs.pr_title }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           import os
-          from action_tool.git_remote_adapter import GitRemoteRepo, get_git_remote_adapter
+          from action_tool.git_remote_adapter import GitRemoteRepo
           from action_tool.pr_version_calc import run_semantic_release
           
-          # rel_label = os.getenv("RELEASE_LABEL")
+          rel_label = os.getenv("RELEASE_LABEL")
+          pr_title = os.getenv("PR_TITLE")
           config_toml_file = os.getenv("CONFIG_TOML_FILE")
           
-          git_adapter = get_git_remote_adapter()
-          pr_title = git_adapter.get_pr_title()
-          rel_label = git_adapter.get_pr_release_label()
-          
-          override_label = git_adapter.release_label_map.get(rel_label)
+          override_label = GitRemoteRepo.release_label_map.get(rel_label)
           if override_label == "":
               override_label = None
               

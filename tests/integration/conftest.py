@@ -132,7 +132,6 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
     runner_token = get_runner_registration_token(gitea_url, create_dummy_user["username"],
                                                  create_dummy_user["password"])
 
-
     # Start the Gitea runner container
     container = client.containers.run(
         runner_image,
