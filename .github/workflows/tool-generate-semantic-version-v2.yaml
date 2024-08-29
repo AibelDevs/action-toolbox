@@ -84,7 +84,9 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           from action_tool.git_remote_adapter import get_git_remote_adapter
-          from action_tool.utils import set_output
+          from action_tool.utils import set_output, set_env
+          from action_tool.load_config import load_config
+          
           
           git_remote = get_git_remote_adapter()
           if git_remote.should_release():
@@ -92,7 +94,15 @@ jobs:
               rel_label = git_remote.get_pr_release_label()
               pr_title = git_remote.get_pr_title()
               set_output("release_label", rel_label)
-              set_output("pr_title", pr_title) 
+              set_output("pr_title", pr_title)
+              toml_config = load_config()
+              if toml_config.mono_repo_enabled:
+                  custom_labels = git_remote.get_custom_labels()
+                  md = {m.name:m for m in toml_config.mono_repo_project}
+                  md_set = set(md.keys())
+                  intersect = md_set.intersection(custom_labels)
+                  mono_repo = md.get(intersect.pop())
+                  set_env("CONFIG_TOML_FILE", mono_repo.config_file.as_posix())
           else:
               set_output("should_make_release", "false")
   
@@ -147,5 +157,5 @@ jobs:
           override_label = GitRemoteRepo.release_label_map.get(rel_label)
           if override_label == "":
               override_label = None
-              
+          
           run_semantic_release(config_toml_file, pr_title, override_label)
