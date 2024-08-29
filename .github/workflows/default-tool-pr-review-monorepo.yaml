@@ -55,8 +55,8 @@ on:
         required: false
 
 env:
-  tool_repo: dummyuser/action-toolbox
-  tool_branch: main
+  tool_repo: ${{ input.tool_repo }}
+  tool_branch: ${{ input.tool_branch }}
   CONFIG_TOML_FILE: action_config.toml
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_URL: ${{ github.server_url }}
@@ -133,7 +133,7 @@ jobs:
         working-directory: ${{ env.SRC_PR_BRANCH_DIR }}
 
   python-review:
-    uses: dummyuser/action-toolbox/.github/workflows/tool-review-python.yaml@main
+    uses: ./.github/workflows/tool-review-python.yaml
     needs: load-config
     if: ${{ needs.load-config.outputs.python_enabled == 'true' }}
     secrets:
@@ -148,7 +148,7 @@ jobs:
       config_toml_file: ${{ needs.check_label_config.outputs.config_toml_file }}
 
   docker-review:
-    uses: dummyuser/action-toolbox/.github/workflows/tool-review-docker.yaml@main
+    uses: ./.github/workflows/tool-review-docker.yaml
     needs: load-config
     if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
     secrets:
@@ -159,7 +159,7 @@ jobs:
       config_toml_file: ${{ needs.load-config.outputs.config_toml_file }}
 
   gitops-review:
-    uses: dummyuser/action-toolbox/.github/workflows/tool-review-gitops.yaml@main
+    uses: ./.github/workflows/tool-review-gitops.yaml
     needs: load-config
     if: ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
     secrets:
