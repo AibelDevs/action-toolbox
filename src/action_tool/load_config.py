@@ -48,7 +48,7 @@ def load_config(config_file=None) -> ActionContext:
     if config_toml_file is None:
         raise ValueError("CONFIG_TOML_FILE environment variable is not set")
 
-    config_toml_file = pathlib.Path(config_toml_file)
+    config_toml_file = pathlib.Path(config_toml_file).resolve().absolute()
 
     data = toml.load(config_toml_file)
     set_output("toml_data", json.dumps(data), True)

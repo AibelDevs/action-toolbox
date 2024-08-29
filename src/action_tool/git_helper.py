@@ -85,8 +85,22 @@ class GitHelper:
         curr_repo.git.push()
         curr_repo.git.push("--tags")
 
-    def create_branch(self, branch_name, push=True):
+    def pull(self, from_branch=None):
         curr_repo = self.git_repo
+        if from_branch is not None:
+            self.git_remote.pull(from_branch)
+        else:
+            curr_repo.git.pull()
+
+    def create_branch(self, branch_name, push=True, from_branch=None):
+        curr_repo = self.git_repo
+        if from_branch is not None:
+            self.git_remote.pull(from_branch)
         curr_repo.git.checkout("-b", branch_name)
         if push:
             curr_repo.git.push("--set-upstream", "origin", branch_name)
+
+    def merge_from(self, from_branch):
+        curr_repo = self.git_repo
+        curr_repo.git.merge(from_branch)
+        curr_repo.git.push()

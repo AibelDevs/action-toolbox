@@ -72,12 +72,17 @@ def review_pr():
             body_review_str += f"\n * ✅ Monorepo label is OK"
             mono_project = mono_repos_dict[mono_proj_intersection.pop()]
             mono_config = load_config(mono_project.config_file)
-            config_file = mono_config.config_toml_file
+            mono_config_file = mono_config.config_toml_file
+            set_output("MONO_CONFIG_FILE", mono_config_file.as_posix())
 
             # Calculate semantic version
             if rel_label is not None:
-                next_version = calculate_version(rel_label, config_file)
-                body_review_str += f"\n * ✅ Next version is {next_version}"
+                next_version = calculate_version(rel_label, mono_config_file)
+                if next_version == "v":
+                    body_review_str += f"\n * ❌ Unable to calculate version based on config file"
+                    pr_is_ok = False
+                else:
+                    body_review_str += f"\n * ✅ Next version is {next_version}"
     else:
         # Calculate semantic version
         if rel_label is not None:

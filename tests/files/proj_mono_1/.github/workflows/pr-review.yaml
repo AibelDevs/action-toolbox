@@ -26,6 +26,7 @@ env:
   tool_repo: dummyuser/action-toolbox
   tool_branch: main
   CONFIG_TOML_FILE: action_config.toml
+  SRC_MAIN_BRANCH_DIR: __source_main
 
 jobs:
   load-config:
@@ -38,6 +39,13 @@ jobs:
       gitops_enabled: ${{ steps.config.outputs.gitops_enabled }}
       python_enabled: ${{ steps.config.outputs.python_enabled }}
     steps:
+      - name: Checkout Main Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }} # For when we need to calculate the next version
+          fetch-depth: 0
+          path: ${{ env.SRC_MAIN_BRANCH_DIR }}
+
       - name: Checkout PR
         uses: actions/checkout@v4
         with:
@@ -77,10 +85,7 @@ jobs:
           HAS_SOURCE_KEY: ${{ steps.check-source-key.outputs.has_source_key_secret }}
         shell: python
         run: |
-          from action_tool.monorepos import check_monorepo_labels
           from action_tool.pr_review import review_pr
-          
-          check_monorepo_labels()
           
           review_pr()
 

@@ -1,5 +1,5 @@
 [tool.action]
-version = "0.1.1"
+version = "0.1.0"
 # This is only relevant for this repository. Normally you will have a version in your package.json or pyproject.toml
 
 [tool.semantic_release]
@@ -29,7 +29,7 @@ prerelease = false
 
 [tool.semantic_release.changelog]
 template_dir = "templates"
-changelog_file = "src/CHANGELOG.md"
+changelog_file = "src/packages/a_sample_project/CHANGELOG.md"
 exclude_commit_patterns = []
 
 [tool.semantic_release.changelog.environment]
