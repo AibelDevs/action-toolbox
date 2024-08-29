@@ -106,11 +106,18 @@ jobs:
         env:
           RELEASE_LABEL: ${{ needs.eval-release.outputs.release_label }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           import os
-          from action_tool.pr_version_calc import calculate_version
-          
-          rel_label = os.getenv("RELEASE_LABEL")
+          from action_tool.git_remote_adapter import get_git_remote_adapter
           config_toml_file = os.getenv("CONFIG_TOML_FILE")
           
-          calculate_version(rel_label, config_toml_file) 
+          git_adapter = get_git_remote_adapter()
+          pr_title = git_adapter.get_pr_title()
+          rel_label = git_adapter.get_pr_release_label()
+          
+          override_label = git_adapter.release_label_map.get(rel_label)
+          if override_label == "":
+              override_label = None
+              
+          run_semantic_release(config_toml_file, pr_title, override_label)

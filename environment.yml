@@ -5,7 +5,7 @@ dependencies:
   - python=3.12
   - pytest
   - python-dotenv
-  - python-semantic-release
+  - python-semantic-release =>9.8.7
   - semver
   - toml==0.10.2
   - PyGithub
