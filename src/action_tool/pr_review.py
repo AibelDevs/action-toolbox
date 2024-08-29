@@ -1,9 +1,10 @@
 import os
+import pathlib
 
 from action_tool.config import logger
 from action_tool.git_remote_adapter import get_git_remote_adapter, PRNoReleaseLabels, PRMultipleReleaseLabels
 from action_tool.load_config import load_config
-from action_tool.pr_version_calc import calculate_version_w_semantic_release
+from action_tool.pr_version_calc import calculate_version_w_semantic_release, check_git_dir
 from action_tool.utils import deserialize_str, set_output
 
 
@@ -77,9 +78,12 @@ def review_pr():
 
             # Calculate semantic version
             if rel_label is not None:
-                next_version = calculate_version_w_semantic_release(rel_label, title, mono_config_file, debug_mode=True)
+                git_dir = pathlib.Path(os.getenv("SRC_MAIN_BRANCH_DIR")).resolve().absolute()
+                mono_rel = mono_config_file.relative_to(pathlib.Path(os.getcwd()).absolute())
+                mono_config_file = git_dir / mono_rel
+                next_version = calculate_version_w_semantic_release(rel_label, title, mono_config_file, git_dir=git_dir, debug_mode=True)
                 if next_version == "":
-                    body_review_str += f"\n * ❌ Unable to calculate version based on config file {mono_config_file}"
+                    body_review_str += f"\n * ❌ Unable to calculate version based on config file {mono_config_file=} and {git_dir=}"
                     pr_is_ok = False
                 else:
                     body_review_str += f"\n * ✅ Next version is '{next_version}'"

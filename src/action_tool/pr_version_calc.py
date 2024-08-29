@@ -7,10 +7,8 @@ from contextlib import contextmanager
 from typing import Literal
 
 import git
-import semver
 from action_tool.config import logger
-from action_tool.git_remote_adapter import GitRemoteRepo
-from action_tool.load_config import load_config
+from action_tool.git_remote_adapter import GitRemoteRepo, is_in_gitea_action, is_in_github_action
 
 
 def check_git_dir(git_dir, toml_file):
@@ -32,24 +30,36 @@ def check_git_dir(git_dir, toml_file):
 
 @contextmanager
 def run_with_dummy_pr_commit(pr_title, git_dir=None):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir = pathlib.Path(temp_dir)
-
-        # Copy the contents of the git directory to the temporary directory
-        shutil.copytree(git_dir, temp_dir, dirs_exist_ok=True)
-
-        # Add the username and email
-        temp_git_repo = git.Repo(temp_dir)
+    if is_in_gitea_action() or is_in_github_action():
+        # Perform any Git-related operations here, e.g., adding and committing files
+        # with open(git_dir / "new_file.txt", "w") as f:
+        #     f.write("This is a new file.")
+        temp_git_repo = git.Repo(git_dir)
         temp_git_repo.git.config("user.email", "dummy@user.com")
         temp_git_repo.git.config("user.name", "dummy_user")
+        # temp_git_repo.git.add(".")
+        temp_git_repo.git.execute(["git", "commit","--allow-empty", "-m", pr_title])
+        yield git_dir
+    else:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir = pathlib.Path(temp_dir)
 
-        # Perform any Git-related operations here, e.g., adding and committing files
-        with open(temp_dir / "new_file.txt", "w") as f:
-            f.write("This is a new file.")
+            # Copy the contents of the git directory to the temporary directory
+            shutil.copytree(git_dir, temp_dir, dirs_exist_ok=True)
 
-        temp_git_repo.git.add(".")
-        temp_git_repo.git.execute(["git", "commit", "-am", pr_title])
-        yield temp_dir
+            # Add the username and email
+            temp_git_repo = git.Repo(temp_dir)
+            temp_git_repo.git.config("user.email", "dummy@user.com")
+            temp_git_repo.git.config("user.name", "dummy_user")
+
+            # Perform any Git-related operations here, e.g., adding and committing files
+            with open(temp_dir / "new_file.txt", "w") as f:
+                f.write("This is a new file.")
+
+            temp_git_repo.git.add(".")
+            temp_git_repo.git.execute(["git", "commit", "-am", pr_title])
+            yield temp_dir
+
 
 def get_override_from_version_diff(old_version, new_version):
     old_tuple = tuple(int(x) for x in old_version.split('.'))
@@ -58,6 +68,7 @@ def get_override_from_version_diff(old_version, new_version):
     # result = old.compare(new)
     #
     # print(result)
+
 
 def calculate_version_w_semantic_release(release_label, pr_title, toml_file, git_dir=None, debug_mode=False):
     print("Checking calculated version from semantic release")
@@ -77,12 +88,15 @@ def calculate_version_w_semantic_release(release_label, pr_title, toml_file, git
 
         if debug_mode:
             command.append("--log-level=DEBUG")
+            command.append("-vv")
 
-        print(f"Running command: {' '.join(command)}")
+        print(f"Running command: {' '.join(command)} using {temp_dir=}, {toml_file_dummy=}")
         result = subprocess.run(command, capture_output=True, text=True, cwd=temp_dir)
 
-    if result.stderr:
-        logger.error(result.stderr)
+        if result.stderr:
+            logger.error(result.stderr)
+            for fp in temp_dir.iterdir():
+                logger.error(f"{fp}")
 
     output = result.stdout.strip()
     print(f'Captured Version Name: "{output}"')

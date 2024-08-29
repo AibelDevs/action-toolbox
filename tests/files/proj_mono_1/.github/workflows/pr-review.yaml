@@ -25,6 +25,7 @@ env:
   CONFIG_TOML_FILE: action_config.toml
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_URL: ${{ github.server_url }}
+  GITHUB_WORKSPACE: ${{ github.workspace }}
   PR_NUMBER: ${{ github.event.pull_request.number }}
   SRC_PR_BRANCH_DIR: ${{ github.workspace }}/__source_pr
   SRC_MAIN_BRANCH_DIR: ${{ github.workspace }}/__source_main
@@ -86,12 +87,14 @@ jobs:
         id: config
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
           HAS_SOURCE_KEY: ${{ steps.check-source-key.outputs.has_source_key_secret }}
         shell: python
         run: |
           from action_tool.pr_review import review_pr
           
           review_pr()
+
         working-directory: ${{ env.SRC_PR_BRANCH_DIR }}
 
   python-review:
@@ -182,6 +185,7 @@ jobs:
           GITOPS_REVIEW_OK: ${{ needs.gitops-review.outputs.gitops_review_ok }}
 
           GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
 
         run: |
           from action_tool.pr_review import perform_pr_final_review

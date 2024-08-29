@@ -55,14 +55,16 @@ on:
         required: false
 
 env:
+  tool_repo: dummyuser/action-toolbox
+  tool_branch: main
+  CONFIG_TOML_FILE: action_config.toml
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_URL: ${{ github.server_url }}
+  GITHUB_WORKSPACE: ${{ github.workspace }}
   PR_NUMBER: ${{ github.event.pull_request.number }}
-  CONFIG_TOML_FILE: ${{ inputs.config_toml_file }}
-
-permissions:
-  pull-requests: write
-  contents: write
+  SRC_PR_BRANCH_DIR: ${{ github.workspace }}/__source_pr
+  SRC_MAIN_BRANCH_DIR: ${{ github.workspace }}/__source_main
+  TOOL_PATH_DIR: ${{ github.workspace }}/__action_tool
 
 jobs:
   load-config:
@@ -80,13 +82,22 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
           fetch-depth: 0
+          path: ${{ env.SRC_PR_BRANCH_DIR }}
+
+      # Remember to always checkout subdirs last
+      - name: Checkout Main Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }} # For when we need to calculate the next version
+          fetch-depth: 0
+          path: ${{ env.SRC_MAIN_BRANCH_DIR }}
 
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.tool_repo }}
-          path: action_tool
-          ref: ${{ inputs.tool_branch }}
+          repository: ${{ env.tool_repo }}
+          path: ${{ env.TOOL_PATH_DIR }}
+          ref: ${{ env.tool_branch }}
           fetch-depth: 0
 
       - name: Set up Python
@@ -95,7 +106,7 @@ jobs:
           python-version: 3.12
 
       - run: pip install .
-        working-directory: action_tool
+        working-directory: ${{ env.TOOL_PATH_DIR }}
 
       - name: check if SOURCE_KEY is set as a secret
         id: check-source-key
@@ -111,18 +122,18 @@ jobs:
         id: config
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
           HAS_SOURCE_KEY: ${{ steps.check-source-key.outputs.has_source_key_secret }}
         shell: python
         run: |
-          from action_tool.monorepos import check_monorepo_labels
           from action_tool.pr_review import review_pr
-          
-          check_monorepo_labels()
           
           review_pr()
 
+        working-directory: ${{ env.SRC_PR_BRANCH_DIR }}
+
   python-review:
-    uses: ./.github/workflows/tool-review-python.yaml
+    uses: dummyuser/action-toolbox/.github/workflows/tool-review-python.yaml@main
     needs: load-config
     if: ${{ needs.load-config.outputs.python_enabled == 'true' }}
     secrets:
@@ -137,7 +148,7 @@ jobs:
       config_toml_file: ${{ needs.check_label_config.outputs.config_toml_file }}
 
   docker-review:
-    uses: ./.github/workflows/tool-review-docker.yaml
+    uses: dummyuser/action-toolbox/.github/workflows/tool-review-docker.yaml@main
     needs: load-config
     if: ${{ needs.load-config.outputs.docker_enabled == 'true' }}
     secrets:
@@ -148,7 +159,7 @@ jobs:
       config_toml_file: ${{ needs.load-config.outputs.config_toml_file }}
 
   gitops-review:
-    uses: ./.github/workflows/tool-review-gitops.yaml
+    uses: dummyuser/action-toolbox/.github/workflows/tool-review-gitops.yaml@main
     needs: load-config
     if: ${{ needs.load-config.outputs.gitops_enabled == 'true' }}
     secrets:
@@ -175,9 +186,9 @@ jobs:
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.tool_repo }}
+          repository: ${{ env.tool_repo }}
           path: action_tool
-          ref: ${{ inputs.tool_branch }}
+          ref: ${{ env.tool_branch }}
           fetch-depth: 0
 
       - name: Set up Python
@@ -207,11 +218,10 @@ jobs:
 
           GITOPS_REVIEW_STR: ${{ needs.gitops-review.outputs.gitops_review_str }}
           GITOPS_REVIEW_OK: ${{ needs.gitops-review.outputs.gitops_review_ok }}
-          EXTRA_REVIEW_STR: ${{ inputs.extra_review_str }}
 
           GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+
         run: |
           from action_tool.pr_review import perform_pr_final_review
           

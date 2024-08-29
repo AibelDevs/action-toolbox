@@ -61,6 +61,8 @@ patch_tags = ["fix", "perf"]
 name = "origin"
 type = "gitea"
 ignore_token_for_push = true
+# Note! Only for localhost gitea testing!!
+insecure = true
 
 [tool.semantic_release.remote.token]
 env = "GH_TOKEN"
