@@ -133,7 +133,7 @@ jobs:
         env:
           RELEASE_LABEL: ${{ needs.eval-release.outputs.release_label }}
           PR_TITLE: ${{ needs.eval-release.outputs.pr_title }}
-          GH_TOKEN: ${{ secrets.SOURCE_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           import os
