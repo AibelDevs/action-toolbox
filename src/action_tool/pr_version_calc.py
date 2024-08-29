@@ -18,6 +18,9 @@ def check_git_dir(git_dir, toml_file):
     if isinstance(git_dir, str):
         git_dir = pathlib.Path(git_dir).resolve().absolute()
 
+    if isinstance(toml_file, str):
+        toml_file = pathlib.Path(toml_file).resolve().absolute()
+
     source_main = os.getenv('SRC_MAIN_BRANCH_DIR')
     if source_main is not None:
         source_main = pathlib.Path(source_main)
