@@ -44,7 +44,7 @@ class ActionContext:
         return self.config_toml_data["tool"]["action"]["version"]
 
 def load_config(config_file=None) -> ActionContext:
-    config_toml_file = os.getenv("CONFIG_TOML_FILE", config_file)
+    config_toml_file = config_file if config_file is not None else os.getenv("CONFIG_TOML_FILE")
     if config_toml_file is None:
         raise ValueError("CONFIG_TOML_FILE environment variable is not set")
 
@@ -117,8 +117,8 @@ def load_config(config_file=None) -> ActionContext:
         mono_repo_project.append(MonoRepo(
             name=mono_repo["name"],
             enabled=mono_repo_enabled,
-            path=pathlib.Path(mono_repo["path"]),
-            config_file=pathlib.Path(mono_repo["config_file"])
+            path=config_toml_file.parent / mono_repo["path"],
+            config_file=config_toml_file.parent / mono_repo["config_file"]
         ))
 
     return ActionContext(

@@ -70,7 +70,9 @@ def review_pr():
             pr_is_ok = False
         else:
             body_review_str += f"\n * ✅ Monorepo label is OK"
-            config_file = config_toml.get_version()
+            mono_project = mono_repos_dict[mono_proj_intersection.pop()]
+            mono_config = load_config(mono_project.config_file)
+            config_file = mono_config.config_toml_file
 
             # Calculate semantic version
             if rel_label is not None:

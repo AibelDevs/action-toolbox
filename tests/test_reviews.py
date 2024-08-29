@@ -6,12 +6,13 @@ from action_tool.utils import get_output
 
 def test_pr_review(tmp_dir, proj_mono_1):
 
-    # Set pre-requisities
+    # Set PR environment variables
 
     os.environ["PR_REVIEW_OK"] = "true"
     os.environ["PR_TITLE"] = "fix: something"
-    os.environ["PR_LABELS"] = '["release-auto"]'
+    os.environ["PR_LABELS"] = '["release-auto","a-sample-project"]'
     os.environ["SECRETS"] = '["SOURCE_KEY"]'
+    os.environ["CONFIG_TOML_FILE"] = (proj_mono_1 / "action_config.toml").as_posix()
 
     review_pr()
 
