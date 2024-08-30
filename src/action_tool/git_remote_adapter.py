@@ -2,11 +2,11 @@ import abc
 import json
 import os
 import pathlib
+from abc import abstractmethod
 from typing import Literal
 
-import git
 import requests
-from abc import abstractmethod
+from github import Github
 
 from action_tool.config import logger
 from action_tool.gitea_tools import get_gitea_labels, comment_on_gitea_pr, create_gitea_label, merge_gitea_pr
@@ -14,7 +14,6 @@ from action_tool.github_tools import comment_on_pr, check_silence_bot_label, cre
 from action_tool.load_config import load_config, MonoRepo
 from action_tool.pr_version_calc import calculate_version_w_semantic_release, run_semantic_release
 from action_tool.utils import set_output, set_env, get_env
-from github import Github
 
 
 class PRNoReleaseLabels(Exception):
@@ -229,7 +228,7 @@ class GithubRemoteRepo(GitRemoteRepo):
         try:
             pr_number = self.get_pr_number()
             self.pull_request = self.repo.get_pull(int(pr_number))
-        except ValueError as e:
+        except BaseException as e:
             logger.warning(e)
 
     def get_pr_number(self) -> int:

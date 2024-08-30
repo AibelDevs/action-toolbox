@@ -8,11 +8,12 @@ import docker
 import git
 import pytest
 import requests
+from docker.errors import NotFound
+
 from action_tool.git_remote_adapter import is_in_github_action, is_in_gitea_action
 from action_tool.gitea_tools import get_gitea_token, create_repository, \
-    get_runner_registration_token, generate_ssh_keypair, add_deploy_key_to_gitea, add_secret_to_gitea
+    get_runner_registration_token, generate_ssh_keypair, add_deploy_key_to_gitea
 from action_tool.utils import encode_ssh_key
-from docker.errors import NotFound
 
 
 @pytest.fixture(scope="function")

@@ -6,7 +6,6 @@ from action_tool.git_helper import GitHelper
 from action_tool.git_remote_adapter import GiteaRemoteRepo
 from action_tool.gitea_tools import create_gitea_pull_request, create_gitea_label, \
     create_gitea_release_labels_if_not_exists, add_secret_to_gitea
-from tests.conftest import mock_local_proj_a_main
 
 
 def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_repository):
