@@ -4,7 +4,7 @@ from action_tool.pr_review import perform_pr_final_review, review_pr
 from action_tool.utils import get_output, set_env
 
 
-def test_pr_review(mock_local_proj_a):
+def test_pr_review(mock_local_proj_a_main):
 
     # Set PR environment variables
 
@@ -12,8 +12,8 @@ def test_pr_review(mock_local_proj_a):
     os.environ["PR_TITLE"] = "fix: something"
     os.environ["PR_LABELS"] = '["release-auto","a-sample-project"]'
     os.environ["HAS_SOURCE_KEY"] = "true"
-    os.environ["CONFIG_TOML_FILE"] = (mock_local_proj_a / "action_config.toml").as_posix()
-    os.environ["SRC_MAIN_BRANCH_DIR"] = mock_local_proj_a.as_posix()
+    os.environ["CONFIG_TOML_FILE"] = (mock_local_proj_a_main / "action_config.toml").as_posix()
+    os.environ["SRC_MAIN_BRANCH_DIR"] = mock_local_proj_a_main.as_posix()
 
     review_pr()
 
