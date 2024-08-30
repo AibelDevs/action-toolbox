@@ -185,7 +185,7 @@ class GitRemoteRepo(abc.ABC):
         return run_semantic_release(config_file, release_override, git_dir)
 
     @abc.abstractmethod
-    def get_pr_number(self):
+    def get_current_pr_number(self):
         pass
 
     @abc.abstractmethod
@@ -232,6 +232,14 @@ class GitRemoteRepo(abc.ABC):
     def create_pr(self, title: str, head: str, base: str) -> dict:
         pass
 
+    @abstractmethod
+    def get_tags(self) -> list[dict]:
+        pass
+
+    @abstractmethod
+    def get_pr_comments(self, pr_number: int | str):
+        pass
+
 
 class GithubRemoteRepo(GitRemoteRepo):
     def __init__(self):
@@ -244,12 +252,12 @@ class GithubRemoteRepo(GitRemoteRepo):
         self.bot_username = "github-actions[bot]"
         self.pull_request = None
         try:
-            pr_number = self.get_pr_number()
+            pr_number = self.get_current_pr_number()
             self.pull_request = self.repo.get_pull(int(pr_number))
         except BaseException as e:
             logger.warning(e)
 
-    def get_pr_number(self) -> int:
+    def get_current_pr_number(self) -> int:
         pr_number = os.getenv('PR_NUMBER')
         if pr_number is None:
             raise ValueError("PR number is not found. Please set the PR_NUMBER environment variable.")
@@ -259,7 +267,7 @@ class GithubRemoteRepo(GitRemoteRepo):
         return {label.name: label.color for label in self.repo.get_labels()}
 
     def get_pr_labels(self):
-        self.get_pr_number()
+        self.get_current_pr_number()
         try:
             labels = [label.name for label in self.pull_request.get_labels()]
             return labels
@@ -267,8 +275,17 @@ class GithubRemoteRepo(GitRemoteRepo):
             print(f"An error occurred: {e}")
             return []
 
+    def get_tags(self) -> list[dict]:
+        # Fetch all tags
+        tags = self.repo.get_tags()
+
+        # Convert to list of dictionaries with name and commit SHA
+        tag_list = [{"name": tag.name, "sha": tag.commit.sha} for tag in tags]
+
+        return tag_list
+
     def add_comment_on_pr(self, comment_body):
-        self.get_pr_number()
+        self.get_current_pr_number()
 
         silence_bot = check_silence_bot_label(self.pull_request)
 
@@ -287,7 +304,7 @@ class GithubRemoteRepo(GitRemoteRepo):
             return False
 
     def get_pr_title(self):
-        self.get_pr_number()
+        self.get_current_pr_number()
         return self.pull_request.title
 
     def add_missing_repo_labels(self):
@@ -301,7 +318,7 @@ class GithubRemoteRepo(GitRemoteRepo):
         create_or_update_github_repo_label(self.repo, label, color)
 
     def set_pr_label(self, lbl_name: str):
-        pr_number = self.get_pr_number()
+        pr_number = self.get_current_pr_number()
         try:
             pr = self.repo.get_pull(int(pr_number))
             pr.add_to_labels(lbl_name)
@@ -311,7 +328,7 @@ class GithubRemoteRepo(GitRemoteRepo):
 
     def clear_all_previous_pr_bot_comments(self):
         try:
-            pr = self.repo.get_pull(int(self.get_pr_number()))
+            pr = self.repo.get_pull(int(self.get_current_pr_number()))
             comments = pr.get_issue_comments()
 
             bot_comments = [comment for comment in comments if comment.user.login == self.bot_username]
@@ -326,7 +343,7 @@ class GithubRemoteRepo(GitRemoteRepo):
             print(f"An error occurred: {e}")
 
     def auto_merge_pr(self, wait_for_checks=True):
-        pr_number = self.get_pr_number()
+        pr_number = self.get_current_pr_number()
         try:
             pr = self.repo.get_pull(pr_number)
             if pr.is_merged():
@@ -338,6 +355,9 @@ class GithubRemoteRepo(GitRemoteRepo):
             print(f"An error occurred while merging PR #{pr_number}: {e}")
 
     def create_pr(self, title: str, head: str, base: str) -> dict:
+        pass
+
+    def get_pr_comments(self, pr_number: int | str):
         pass
 
 
@@ -362,11 +382,12 @@ class GiteaRemoteRepo(GitRemoteRepo):
         self.repo = repo if repo_name is None else repo_name
 
         try:
-            self.get_pr_number()
+            self.get_current_pr_number()
         except ValueError as e:
             logger.warning(e)
 
-    def get_pr_number(self) -> str:
+    def get_current_pr_number(self) -> str:
+        """Assuming this method is called from a context inside a PR in either github actions or gitea actions"""
         pr_number = os.getenv('PR_NUMBER')
         if pr_number is None:
             raise ValueError("PR number is not found. Please set the PR_NUMBER environment variable.")
@@ -386,7 +407,7 @@ class GiteaRemoteRepo(GitRemoteRepo):
         return [x['name'] for x in pr.get('labels', [])]
 
     def add_comment_on_pr(self, comment_body):
-        comment_on_gitea_pr(comment_body, self.get_pr_number(), self.url, self.owner, self.repo, self.token)
+        comment_on_gitea_pr(comment_body, self.get_current_pr_number(), self.url, self.owner, self.repo, self.token)
 
     def check_if_secret_exists(self, secret: str) -> bool:
         headers = {
@@ -408,7 +429,7 @@ class GiteaRemoteRepo(GitRemoteRepo):
             "Authorization": f"token {self.token}",
             "Content-Type": "application/json"
         }
-        pr_number = self.get_pr_number()
+        pr_number = self.get_current_pr_number()
         url = f"{self.url}/api/v1/repos/{self.owner}/{self.repo}/pulls/{pr_number}"
 
         response = requests.get(url, headers=headers)
@@ -436,13 +457,13 @@ class GiteaRemoteRepo(GitRemoteRepo):
         create_gitea_label(label, self.url, self.owner, self.repo, self.token, color=color)
 
     def set_pr_label(self, lbl_name: str):
-        pr_number = self.get_pr_number()
+        pr_number = self.get_current_pr_number()
 
         headers = {
             "Authorization": f"token {self.token}",
             "Content-Type": "application/json"
         }
-        url = f"{self.url}/api/v1/repos/{self.owner}/{self.repo}/issues/{self.get_pr_number()}/labels"
+        url = f"{self.url}/api/v1/repos/{self.owner}/{self.repo}/issues/{self.get_current_pr_number()}/labels"
 
         payload = {
             "labels": [lbl_name]
@@ -460,31 +481,59 @@ class GiteaRemoteRepo(GitRemoteRepo):
             "Authorization": f"token {self.token}",
             "Content-Type": "application/json"
         }
-        url = f"{self.url}/api/v1/repos/{self.repo}/issues/{self.get_pr_number()}/comments"
+        pr_number = self.get_current_pr_number()
+        comments = self.get_pr_comments(pr_number)
 
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-            comments = response.json()
+        bot_comments = [comment for comment in comments if comment['user']['login'] == self.bot_username]
 
-            bot_comments = [comment for comment in comments if comment['user']['login'] == self.bot_username]
-
-            if len(bot_comments) > 1:
-                for comment in bot_comments[:-1]:  # Keep only the last comment
-                    delete_url = f"{self.url}/api/v1/repos/{self.repo}/issues/comments/{comment['id']}"
-                    delete_response = requests.delete(delete_url, headers=headers)
-                    delete_response.raise_for_status()
-                    print(f"Deleted comment: {comment['id']}")
+        if len(bot_comments) > 1:
+            for comment in bot_comments[:-1]:  # Keep only the last comment
+                delete_url = f"{self.url}/api/v1/repos/{self.repo}/issues/comments/{comment['id']}"
+                delete_response = requests.delete(delete_url, headers=headers)
+                delete_response.raise_for_status()
+                print(f"Deleted comment: {comment['id']}")
 
             print("Cleared all but the last bot comment.")
-        except requests.exceptions.RequestException as e:
-            print(f"An error occurred: {e}")
 
     def auto_merge_pr(self, wait_for_checks=True):
-        merge_gitea_pr(self.get_pr_number(), self.url, self.owner, self.repo, self.token, wait_for_checks)
+        merge_gitea_pr(self.get_current_pr_number(), self.url, self.owner, self.repo, self.token, wait_for_checks)
 
     def create_pr(self, title: str, head: str, base: str) -> dict:
         return create_gitea_pull_request(self.url, self.owner, self.repo, self.token, title, head, base)
+
+    def get_tags(self) -> list[dict]:
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Content-Type": "application/json"
+        }
+
+        # Construct the API URL
+        api_url = f"{self.url}/api/v1/repos/{self.owner}/{self.repo}/tags"
+
+        # Make the GET request
+        response = requests.get(api_url, headers=headers)
+
+        # Check for request success
+        response.raise_for_status()
+
+        # Convert response JSON to list of dictionaries
+        tags = response.json()
+
+        # Each tag should already be a dictionary with the name and commit SHA
+        return [{"name": tag["name"], "sha": tag["commit"]["sha"]} for tag in tags]
+
+    def get_pr_comments(self, pr_number: int | str):
+        headers = {
+            "Authorization": f"token {self.token}",
+            "Content-Type": "application/json"
+        }
+        url = f"{self.url}/api/v1/repos/{self.owner}/{self.repo}/pulls/{self.get_current_pr_number()}/reviews"
+
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise ValueError(f"Failed to get pr comments: {response.status_code} - {response.text}")
 
 
 class LocalGitRemoteRepo(GitRemoteRepo):
@@ -492,7 +541,7 @@ class LocalGitRemoteRepo(GitRemoteRepo):
     def __init__(self):
         super().__init__()
 
-    def get_pr_number(self):
+    def get_current_pr_number(self):
         return os.environ["PR_NUMBER"]
 
     def get_pr_labels(self):
@@ -529,6 +578,12 @@ class LocalGitRemoteRepo(GitRemoteRepo):
         pass
 
     def add_repo_label(self, label: str, color: str):
+        pass
+
+    def get_tags(self) -> list[dict]:
+        pass
+
+    def get_pr_comments(self, pr_number: int | str):
         pass
 
 

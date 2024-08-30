@@ -1,4 +1,5 @@
 import os
+import time
 
 import requests
 
@@ -50,7 +51,24 @@ def test_on_pr_merge(gitea_container, gitea_url, create_dummy_user, create_fake_
     git_remote_adapter.set_pr_label('a-sample-project')
 
     git_remote_adapter.auto_merge_pr()
+    tags = []
+    max_wait = 120  # seconds
+    wait = 0
+    while len(tags) == 0:
+        tags = git_remote_adapter.get_tags()
+        time.sleep(1)
+        wait += 1
+        if wait > max_wait:
+            break
 
-    # get the PR review comment and evaluate its contents
-    # Todo: add tests to check that the PR bot has created the correct message
+    assert len(tags) == 1
+    tag = tags[0]
+    assert tag["name"] == "v0.1.0"
+
+    comments = git_remote_adapter.get_pr_comments(pr["number"])
+    assert len(comments) == 1
+    comment_body = comments[0]["body"]
+    assert comment_body
+    assert "I have checked your PR and found no issues" in comment_body
+
     print("Gitea on PR merge step passed successfully.")

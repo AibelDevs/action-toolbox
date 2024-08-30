@@ -162,7 +162,14 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
     container.stop()
     container.remove()
     client.volumes.get("runner_workdir").remove(force=True)
-    client.volumes.get("act-toolcache").remove(force=True)
+    # clean all containers with names starting with "GITEA-ACTIONS-TASK"
+    for cont in client.containers.list():
+        if cont.name.startswith("GITEA-ACTIONS-TASK"):
+            cont.stop()
+            try:
+                cont.remove()
+            except docker.errors.APIError:
+                pass
 
 
 @pytest.fixture(scope="function")
