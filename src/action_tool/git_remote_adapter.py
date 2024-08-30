@@ -76,6 +76,10 @@ class GitRemoteRepo(abc.ABC):
 
     def get_current_pr_mono_repo(self) -> MonoRepo | None:
         if self.config.mono_repo_enabled:
+            release_mono_label = get_env("RELEASE_MONO_LABEL")
+            if release_mono_label is not None:
+                return release_mono_label
+
             custom_labels = self.get_custom_pr_labels()
             md = {m.name: m for m in self.config.mono_repo_project}
             md_set = set(md.keys())
@@ -144,6 +148,7 @@ class GitRemoteRepo(abc.ABC):
             if toml_config.mono_repo_enabled:
                 mono_repo = self.get_current_pr_mono_repo()
                 set_env("CONFIG_TOML_FILE", mono_repo.config_file.as_posix())
+                set_output("release_mono_label", mono_repo.name)
         else:
             set_output("should_make_release", "false")
 

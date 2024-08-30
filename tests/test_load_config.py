@@ -6,10 +6,9 @@ from action_tool.load_config import load_config
 from action_tool.utils import deserialize_str
 
 
-def test_basic_load_config(mock_local_proj_a):
-    cfg_file = mock_local_proj_a / "action_config.toml"
-    os.environ["CONFIG_TOML_FILE"] = cfg_file.as_posix()
+def test_basic_load_config(mock_local_proj_a_main):
     action_context = load_config()
+    action_context.set_outputs()
 
     output_vars = pathlib.Path(os.getenv('GITHUB_OUTPUT')).read_text()
     data = dict(line.strip().split('=') for line in output_vars.splitlines() if line and not line.startswith('#'))
