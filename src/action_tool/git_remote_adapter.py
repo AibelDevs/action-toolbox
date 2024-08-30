@@ -164,7 +164,7 @@ class GitRemoteRepo(abc.ABC):
         if action_main_src is not None:
             logger.info("Will use main branch for calculating next version")
             action_main_src = pathlib.Path(action_main_src).resolve().absolute()
-            if not config_file.relative_to(action_main_src):
+            if not config_file.is_relative_to(action_main_src):
                 toml_rel = config_file.relative_to(git_dir)
                 config_file = git_dir / toml_rel
             git_dir = action_main_src
