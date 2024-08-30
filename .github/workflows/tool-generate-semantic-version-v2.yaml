@@ -53,9 +53,9 @@ jobs:
   eval-release:
     runs-on: ubuntu-latest
     outputs:
-      should_make_a_release: ${{ steps.evaluate-release.outputs.should_make_release }}
-      release_label: ${{ steps.evaluate-release.outputs.release_label }}
-      pr_title: ${{ steps.evaluate-release.outputs.pr_title }}
+      should_make_a_release: ${{ steps.prepare-release.outputs.should_make_release }}
+      release_override: ${{ steps.prepare-release.outputs.release_override }}
+      release_mono_label: ${{ steps.prepare-release.outputs.release_mono_label }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -82,7 +82,7 @@ jobs:
 
       - name: Evaluate Release
         shell: python
-        id: evaluate-release
+        id: prepare-release
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -95,7 +95,7 @@ jobs:
           git_remote.prepare_release()
         working-directory: ${{ env.SRC_MAIN_BRANCH_DIR }}
 
-  generateRelease:
+  create-release:
     needs: eval-release
     if: ${{ needs.eval-release.outputs.should_make_a_release == 'true' }}
     runs-on: ubuntu-latest
@@ -131,6 +131,7 @@ jobs:
         shell: python
         env:
           RELEASE_OVERRIDE: ${{ needs.eval-release.outputs.release_override }}
+          RELEASE_MONO_LABEL: ${{ needs.eval-release.outputs.release_mono_label }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
