@@ -24,7 +24,7 @@ runner:
   # So the job could be stopped by the Gitea instance if it's timeout is shorter than this.
   timeout: 3h
   # Whether skip verifying the TLS certificate of the Gitea instance.
-  insecure: false
+  insecure: true
   # The timeout for fetching the job from the Gitea instance.
   fetch_timeout: 5s
   # The interval for fetching the job from the Gitea instance.

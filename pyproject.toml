@@ -27,8 +27,10 @@ classifiers = [
 dependencies = [
     'toml ~= 0.10.2',
     'PyGithub ~= 2.4.0',
+    'pydantic ~= 2.8.2',
     'python-dotenv ~= 1.0.1',
-    'python-semantic-release ~= 9.8.7',
+    #'python-semantic-release ~= 9.8.7',
+    'python-semantic-release @ git+https://github.com/Krande/python-semantic-release.git@fix/remote-config-insecure',
     'semver ~= 3.0.2',
 ]
 [project.urls]

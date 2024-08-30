@@ -1,8 +1,6 @@
-import os
-
 from action_tool.config import logger
-from action_tool.git_remote_adapter import get_git_remote_adapter, PRNoReleaseLabels, PRMultipleReleaseLabels
-from action_tool.load_config import load_config
+from action_tool.git_remote_adapter import get_git_remote_adapter, PRNoReleaseLabels, PRMultipleReleaseLabels, \
+    PRNoMonoRepoLabel, PRTooManyMonoRepoLabel, GitRemoteRepo
 from action_tool.pr_version_calc import calculate_version_w_semantic_release, FailedSemantics
 from action_tool.utils import deserialize_str, set_output, get_env
 
@@ -12,7 +10,7 @@ def check_pr_title(title: str):
     return title.startswith(tuple(valid_pr_title))
 
 
-def review_pr(debug_mode=False):
+def review_pr() -> GitRemoteRepo:
     git_remote = get_git_remote_adapter()
     git_remote.add_missing_repo_labels()
 
@@ -36,9 +34,8 @@ def review_pr(debug_mode=False):
         body_review_str += "\n * ❌ You need to start PR title with fix: feat: fix!: feat!: chore:"
 
     # Check if a release label is set
-    rel_label = None
     try:
-        rel_label = git_remote.get_pr_release_label()
+        git_remote.get_pr_release_label()
         body_review_str += f"\n * ✅ Release label is OK"
     except PRNoReleaseLabels:
         logger.info("No release label assigned. Applying default PR label 'release-skip'")
@@ -49,45 +46,28 @@ def review_pr(debug_mode=False):
         pr_is_ok = False
         body_review_str += f"\n * {e}"
 
-    config_toml = load_config()
-
     # Check if monorepo
-    if config_toml.mono_repo_enabled:
-        custom_labels = git_remote.get_custom_labels()
-        mono_repos_dict = {x.name: x for x in config_toml.mono_repo_project}
-        mono_repos_set = set(mono_repos_dict.keys())
-        mono_proj_intersection = custom_labels.intersection(mono_repos_set)
-        if len(mono_proj_intersection) == 0:
-            body_review_str += f"\n * ❌ Monorepo label is not set. Please use one of the following labels: {mono_repos_set}"
-            pr_is_ok = False
-        elif len(mono_proj_intersection) > 1:
-            body_review_str += f"\n * ❌ Multiple monorepo labels are set. Please use only one of the following labels: {mono_repos_set}"
-            pr_is_ok = False
-        else:
+    if git_remote.config.mono_repo_enabled:
+        try:
+            mono_project = git_remote.get_current_pr_mono_repo()
             body_review_str += f"\n * ✅ Monorepo label is OK"
-            mono_project = mono_repos_dict[mono_proj_intersection.pop()]
-            mono_config = load_config(mono_project.config_file)
-            mono_config_file = mono_config.config_toml_file
+            mono_config_file = mono_project.config_file
             set_output("MONO_CONFIG_FILE", mono_config_file.as_posix())
 
-            # Calculate semantic version
-            if rel_label is not None:
-                try:
-                    next_version = calculate_version_w_semantic_release(rel_label, title, mono_config_file,
-                                                                        debug_mode=debug_mode)
-                    body_review_str += f"\n * ✅ Next version is '{next_version}'"
-                except FailedSemantics as e:
-                    body_review_str += f"\n * ❌ Unable to calculate next semantic version due to \n\n```{e}```"
-                    pr_is_ok = False
+        except PRNoMonoRepoLabel as e:
+            body_review_str += f"\n * {e}"
+            pr_is_ok = False
+        except PRTooManyMonoRepoLabel as e:
+            body_review_str += f"\n * {e}"
+            pr_is_ok = False
 
-    else:
-        # Calculate semantic version
-        if rel_label is not None:
-            next_version = calculate_version_w_semantic_release(rel_label, title, config_toml.config_toml_file)
-            if next_version == "":
-                body_review_str += f"\n * ❌ Unable to calculate version based on config file"
-                pr_is_ok = False
-            body_review_str += f"\n * ✅ Next version is '{next_version}'"
+    # Calculate semantic version
+    try:
+        next_version = git_remote.calculate_next_version()
+        body_review_str += f"\n * ✅ Next version is '{next_version}'"
+    except FailedSemantics as e:
+        body_review_str += f"\n * ❌ Unable to calculate version based on \n\n```{e}```"
+        pr_is_ok = False
 
     if pr_is_ok:
         header += "I found no pr-related issues.\n"
@@ -99,7 +79,7 @@ def review_pr(debug_mode=False):
     set_output('pr_review_ok', str(pr_is_ok).lower())
     set_output('pr_review_str', pr_review_str, True)
 
-    return pr_is_ok, pr_review_str
+    return git_remote
 
 
 def perform_pr_final_review():

@@ -1,13 +1,19 @@
 import abc
 import json
 import os
+import pathlib
+from typing import Literal
+
+import git
 import requests
 from abc import abstractmethod
 
 from action_tool.config import logger
 from action_tool.gitea_tools import get_gitea_labels, comment_on_gitea_pr, create_gitea_label, merge_gitea_pr
 from action_tool.github_tools import comment_on_pr, check_silence_bot_label, create_or_update_github_repo_label
-from action_tool.utils import set_output
+from action_tool.load_config import load_config, MonoRepo
+from action_tool.pr_version_calc import calculate_version_w_semantic_release, run_semantic_release
+from action_tool.utils import set_output, set_env, get_env
 from github import Github
 
 
@@ -19,10 +25,18 @@ class PRMultipleReleaseLabels(Exception):
     pass
 
 
+class PRNoMonoRepoLabel(Exception):
+    pass
+
+
+class PRTooManyMonoRepoLabel(Exception):
+    pass
+
+
 class GitRemoteRepo(abc.ABC):
     release_label_map = {
-        "release-skip": "",
-        "release-auto": "",
+        "release-skip": None,
+        "release-auto": None,
         "release-patch": "--patch",
         "release-minor": "--minor",
         "release-major": "--major",
@@ -39,8 +53,8 @@ class GitRemoteRepo(abc.ABC):
         'silence-bot': '000000'  # Black
     }
 
-    def __init__(self):
-        pass
+    def __init__(self, config_toml_file=None):
+        self.config = load_config(config_file=config_toml_file)
 
     def get_pr_release_label(self):
         rel_labels = set(self.rel_labels_with_color.keys())
@@ -49,23 +63,117 @@ class GitRemoteRepo(abc.ABC):
         if len(intersection) == 0:
             raise PRNoReleaseLabels(f"Unable to find release labels: {pr_labels=}, {rel_labels=}")
         elif len(intersection) > 1:
-            raise PRMultipleReleaseLabels(f"❌ Multiple labels found {intersection}. You can only assing 1 release label at the time.")
+            raise PRMultipleReleaseLabels(
+                f"❌ Multiple labels found {intersection}. You can only assing 1 release label at the time.")
         rel_label = list(intersection)[0]
         return rel_label
 
-    def get_custom_labels(self) -> set[str]:
+    def get_custom_pr_labels(self) -> set[str]:
         rel_labels = set(list(self.rel_labels_with_color.keys()) + list(self.bot_labels.keys()))
         pr_labels = set(self.get_pr_labels())
         difference = pr_labels - rel_labels
 
         return difference
 
-    def should_release(self):
+    def get_current_pr_mono_repo(self) -> MonoRepo | None:
+        if self.config.mono_repo_enabled:
+            custom_labels = self.get_custom_pr_labels()
+            md = {m.name: m for m in self.config.mono_repo_project}
+            md_set = set(md.keys())
+            intersect = md_set.intersection(custom_labels)
+            if len(intersect) == 0:
+                raise PRNoMonoRepoLabel(
+                    f"❌ Monorepo label is not set. Please use one of the following labels: {md_set}")
+            elif len(intersect) > 1:
+                raise PRTooManyMonoRepoLabel(
+                    f"❌ Too many monorepo labels are set. Please use only 1 of the following labels: {md_set}")
+            return md.get(intersect.pop())
+
+        return None
+
+    def get_release_override(self) -> None | Literal["--patch", "--minor", "--major"]:
+        rel_label = self.get_pr_release_label()
+        if rel_label == 'release-skip':
+            return None
+
+        pr_title = self.get_pr_title()
+        if "!:" in pr_title:
+            return "--major"
+
+        if self.config.mono_repo_enabled:
+            mono_repo = self.get_current_pr_mono_repo()
+            raw_config = mono_repo.raw_config
+        else:
+            raw_config = self.config.raw_config
+
+        allowed_tags = set(raw_config.commit_parser_options.get("allowed_tags"))
+        minor_tags = raw_config.commit_parser_options.get("minor_tags")
+        patch_tags = raw_config.commit_parser_options.get("patch_tags")
+
+        non_version_tags = allowed_tags - set(minor_tags) - set(patch_tags)
+
+        for minor_tag in minor_tags:
+            if pr_title.startswith(minor_tag):
+                return "--minor"
+
+        for patch_tag in patch_tags:
+            if pr_title.startswith(patch_tag):
+                return "--patch"
+
+        for non_version_tag in non_version_tags:
+            if pr_title.startswith(non_version_tag):
+                return None
+
+        logger.error(f"An illegal PR title detected: '{pr_title}'. It must start with one of '{allowed_tags}'")
+        return None
+
+    def should_release(self) -> bool:
         rel_label = self.get_pr_release_label()
         if rel_label == 'release-skip':
             return False
 
+        if self.get_release_override() is None:
+            return False
+
         return True
+
+    def prepare_release(self):
+        if self.should_release():
+            set_output("should_make_release", "true")
+            set_output("release_override", self.get_release_override())
+            toml_config = load_config()
+            if toml_config.mono_repo_enabled:
+                mono_repo = self.get_current_pr_mono_repo()
+                set_env("CONFIG_TOML_FILE", mono_repo.config_file.as_posix())
+        else:
+            set_output("should_make_release", "false")
+
+    def get_config_and_gir_dir(self):
+        if self.config.mono_repo_enabled:
+            mono_repo = self.get_current_pr_mono_repo()
+            config_file = mono_repo.config_file
+        else:
+            config_file = self.config.config_toml_file
+
+        git_dir = pathlib.Path(os.getcwd())
+        action_main_src = get_env("SRC_MAIN_BRANCH_DIR")
+        if action_main_src is not None:
+            logger.info("Will use main branch for calculating next version")
+
+            toml_rel = config_file.relative_to(git_dir)
+            git_dir = pathlib.Path(action_main_src).resolve().absolute()
+            config_file = git_dir / toml_rel
+
+        return config_file, git_dir
+
+    def calculate_next_version(self):
+        config_file, git_dir = self.get_config_and_gir_dir()
+        return calculate_version_w_semantic_release(config_file, self.get_release_override(), git_dir)
+
+    def make_new_release(self):
+        config_file, git_dir = self.get_config_and_gir_dir()
+        release_override = get_env("RELEASE_OVERRIDE", self.get_release_override())
+        return run_semantic_release(config_file, release_override, git_dir)
 
     @abc.abstractmethod
     def get_pr_number(self):

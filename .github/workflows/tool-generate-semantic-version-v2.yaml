@@ -84,27 +84,12 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           from action_tool.git_remote_adapter import get_git_remote_adapter
-          from action_tool.utils import set_output, set_env
-          from action_tool.load_config import load_config
+          from action_tool.config import logger
           
+          logger.setLevel("INFO")
           
           git_remote = get_git_remote_adapter()
-          if git_remote.should_release():
-              set_output("should_make_release", "true")
-              rel_label = git_remote.get_pr_release_label()
-              pr_title = git_remote.get_pr_title()
-              set_output("release_label", rel_label)
-              set_output("pr_title", pr_title)
-              toml_config = load_config()
-              if toml_config.mono_repo_enabled:
-                  custom_labels = git_remote.get_custom_labels()
-                  md = {m.name:m for m in toml_config.mono_repo_project}
-                  md_set = set(md.keys())
-                  intersect = md_set.intersection(custom_labels)
-                  mono_repo = md.get(intersect.pop())
-                  set_env("CONFIG_TOML_FILE", mono_repo.config_file.as_posix())
-          else:
-              set_output("should_make_release", "false")
+          git_remote.prepare_release()
   
 
   generateRelease:
@@ -141,21 +126,14 @@ jobs:
       - name: Check PR for any labels suggesting release_override
         shell: python
         env:
-          RELEASE_LABEL: ${{ needs.eval-release.outputs.release_label }}
-          PR_TITLE: ${{ needs.eval-release.outputs.pr_title }}
+          RELEASE_OVERRIDE: ${{ needs.eval-release.outputs.release_override }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          import os
-          from action_tool.git_remote_adapter import GitRemoteRepo
-          from action_tool.pr_version_calc import run_semantic_release
+          from action_tool.git_remote_adapter import get_git_remote_adapter
+          from action_tool.config import logger
           
-          rel_label = os.getenv("RELEASE_LABEL")
-          pr_title = os.getenv("PR_TITLE")
-          config_toml_file = os.getenv("CONFIG_TOML_FILE")
+          logger.setLevel("INFO")
           
-          override_label = GitRemoteRepo.release_label_map.get(rel_label)
-          if override_label == "":
-              override_label = None
-          
-          run_semantic_release(config_toml_file, pr_title, override_label)
+          git_adapter = get_git_remote_adapter()
+          git_adapter.make_new_release()

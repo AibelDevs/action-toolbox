@@ -6,6 +6,7 @@ from action_tool.git_helper import GitHelper
 from action_tool.git_remote_adapter import GiteaRemoteRepo
 from action_tool.gitea_tools import create_gitea_pull_request, create_gitea_label, \
     create_gitea_release_labels_if_not_exists, add_secret_to_gitea
+from tests.conftest import mock_local_proj_a_main
 
 
 def test_gitea_setup(gitea_container, gitea_url, create_dummy_user, create_fake_repository):
@@ -85,6 +86,7 @@ def test_on_pr_merge(gitea_container, gitea_url, create_dummy_user, create_fake_
     create_gitea_pull_request(gitea_url, username, repo_name, created_token, "feat: new-stuff", "feat/new-stuff",
                               "main")
     os.environ["PR_NUMBER"] = "1"
+    os.environ["CONFIG_TOML_FILE"] = (mock_proj_a / "action_config.toml").as_posix()
 
     git_remote_adapter = GiteaRemoteRepo(token=created_token, url=gitea_url, repo_owner=username, repo_name=repo_name)
     git_remote_adapter.set_pr_label('release-minor')

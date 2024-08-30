@@ -127,8 +127,12 @@ jobs:
         shell: python
         run: |
           from action_tool.pr_review import review_pr
+          from action_tool.config import logger
           
-          review_pr()
+          logger.setLevel("INFO")
+          
+          git_remote = review_pr()
+          git_remote.config.set_outputs()
 
         working-directory: ${{ env.SRC_PR_BRANCH_DIR }}
 
@@ -224,6 +228,9 @@ jobs:
 
         run: |
           from action_tool.pr_review import perform_pr_final_review
+          from action_tool.config import logger
+          
+          logger.setLevel("INFO")
           
           perform_pr_final_review()
 

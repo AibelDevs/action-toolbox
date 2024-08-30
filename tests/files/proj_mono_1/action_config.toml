@@ -9,3 +9,6 @@ enabled = true
 name = "b-sample-project"
 path = "src/packages/b_sample_project"
 config_file = "src/packages/b_sample_project/.semver.toml"
+
+[tool.semantic_release.remote]
+insecure = true
