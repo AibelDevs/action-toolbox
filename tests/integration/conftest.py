@@ -162,6 +162,7 @@ def act_runner_container(gitea_url, create_dummy_user, create_fake_repository, d
     container.stop()
     container.remove()
     client.volumes.get("runner_workdir").remove(force=True)
+    client.volumes.get("act-toolcache").remove(force=True)
 
 
 @pytest.fixture(scope="function")
