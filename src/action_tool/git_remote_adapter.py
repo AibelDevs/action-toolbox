@@ -9,7 +9,8 @@ import requests
 from github import Github
 
 from action_tool.config import logger
-from action_tool.gitea_tools import get_gitea_labels, comment_on_gitea_pr, create_gitea_label, merge_gitea_pr
+from action_tool.gitea_tools import get_gitea_labels, comment_on_gitea_pr, create_gitea_label, merge_gitea_pr, \
+    create_gitea_pull_request
 from action_tool.github_tools import comment_on_pr, check_silence_bot_label, create_or_update_github_repo_label
 from action_tool.load_config import load_config, MonoRepo
 from action_tool.pr_version_calc import calculate_version_w_semantic_release, run_semantic_release
@@ -76,12 +77,13 @@ class GitRemoteRepo(abc.ABC):
 
     def get_current_pr_mono_repo(self) -> MonoRepo | None:
         if self.config.mono_repo_enabled:
+            md = {m.name: m for m in self.config.mono_repo_project}
+
             release_mono_label = get_env("RELEASE_MONO_LABEL")
             if release_mono_label is not None:
-                return release_mono_label
+                return md.get(release_mono_label)
 
             custom_labels = self.get_custom_pr_labels()
-            md = {m.name: m for m in self.config.mono_repo_project}
             md_set = set(md.keys())
             intersect = md_set.intersection(custom_labels)
             if len(intersect) == 0:
@@ -177,7 +179,9 @@ class GitRemoteRepo(abc.ABC):
 
     def make_new_release(self):
         config_file, git_dir = self.get_config_and_gir_dir()
-        release_override = get_env("RELEASE_OVERRIDE", self.get_release_override())
+        release_override = get_env("RELEASE_OVERRIDE")
+        if release_override is None:
+            release_override = self.get_release_override()
         return run_semantic_release(config_file, release_override, git_dir)
 
     @abc.abstractmethod
@@ -209,6 +213,10 @@ class GitRemoteRepo(abc.ABC):
         pass
 
     @abstractmethod
+    def add_repo_label(self, label: str, color: str):
+        pass
+
+    @abstractmethod
     def set_pr_label(self, lbl_name: str):
         pass
 
@@ -218,6 +226,10 @@ class GitRemoteRepo(abc.ABC):
 
     @abstractmethod
     def auto_merge_pr(self, wait_for_checks=True):
+        pass
+
+    @abstractmethod
+    def create_pr(self, title: str, head: str, base: str) -> dict:
         pass
 
 
@@ -285,6 +297,9 @@ class GithubRemoteRepo(GitRemoteRepo):
         for rel_lbl, color in self.bot_labels.items():
             create_or_update_github_repo_label(self.repo, rel_lbl, color)
 
+    def add_repo_label(self, label: str, color: str):
+        create_or_update_github_repo_label(self.repo, label, color)
+
     def set_pr_label(self, lbl_name: str):
         pr_number = self.get_pr_number()
         try:
@@ -321,6 +336,9 @@ class GithubRemoteRepo(GitRemoteRepo):
             print(f"PR #{pr_number} has been merged successfully.")
         except Exception as e:
             print(f"An error occurred while merging PR #{pr_number}: {e}")
+
+    def create_pr(self, title: str, head: str, base: str) -> dict:
+        pass
 
 
 class GiteaRemoteRepo(GitRemoteRepo):
@@ -414,6 +432,9 @@ class GiteaRemoteRepo(GitRemoteRepo):
             lbl_with_color = self.rel_labels_with_color[label]
             create_gitea_label(label, self.url, self.owner, self.repo, self.token, color=lbl_with_color)
 
+    def add_repo_label(self, label: str, color: str):
+        create_gitea_label(label, self.url, self.owner, self.repo, self.token, color=color)
+
     def set_pr_label(self, lbl_name: str):
         pr_number = self.get_pr_number()
 
@@ -462,6 +483,9 @@ class GiteaRemoteRepo(GitRemoteRepo):
     def auto_merge_pr(self, wait_for_checks=True):
         merge_gitea_pr(self.get_pr_number(), self.url, self.owner, self.repo, self.token, wait_for_checks)
 
+    def create_pr(self, title: str, head: str, base: str) -> dict:
+        return create_gitea_pull_request(self.url, self.owner, self.repo, self.token, title, head, base)
+
 
 class LocalGitRemoteRepo(GitRemoteRepo):
 
@@ -496,6 +520,12 @@ class LocalGitRemoteRepo(GitRemoteRepo):
         pass
 
     def auto_merge_pr(self, wait_for_checks=True):
+        pass
+
+    def create_pr(self, title: str, head: str, base: str) -> dict:
+        pass
+
+    def get_pr_release_label(self):
         pass
 
 

@@ -1,4 +1,4 @@
-from action_tool.utils import set_outputname: Create Tag on PR Merge
+name: Create Tag on PR Merge
 
 on:
   pull_request:
@@ -16,12 +16,15 @@ concurrency:
   cancel-in-progress: true
 
 env:
+
   GITHUB_REPOSITORY: ${{ github.repository }}
   GITHUB_URL: ${{ github.server_url }}
   PR_NUMBER: ${{ github.event.pull_request.number }}
   tool_repo: dummyuser/action-toolbox
   tool_branch: main
   CONFIG_TOML_FILE: action_config.toml
+  SRC_MAIN_BRANCH_DIR: ${{ github.workspace }}/__source_main
+  TOOL_PATH_DIR: ${{ github.workspace }}/__action_tool
 
 jobs:
   eval-release:
@@ -36,14 +39,15 @@ jobs:
         with:
           ref: ${{ github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
           fetch-depth: 0
+          path: ${{ env.SRC_MAIN_BRANCH_DIR }}
 
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
           repository: ${{ env.tool_repo }}
-          path: action_tool
           ref: ${{ env.tool_branch }}
           fetch-depth: 0
+          path: ${{ env.TOOL_PATH_DIR }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -51,7 +55,7 @@ jobs:
           python-version: 3.12
 
       - run: pip install .
-        working-directory: action_tool
+        working-directory: ${{ env.TOOL_PATH_DIR }}
 
       - name: Prepare Release
         shell: python
@@ -66,10 +70,10 @@ jobs:
           
           git_remote = get_git_remote_adapter()
           git_remote.prepare_release()
-  
+        working-directory: ${{ env.SRC_MAIN_BRANCH_DIR }}
   
 
-  generateRelease:
+  create-release:
     needs: eval-release
     if: ${{ needs.eval-release.outputs.should_make_a_release == 'true' }}
     runs-on: ubuntu-latest
@@ -81,16 +85,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.ref_name }}
-          ssh-key: ${{ secrets.SOURCE_KEY }}
+          #ref: ${{ github.ref_name }}
+#          ref: ${{ github.event.ref }}  # This is more explicit
+          ref: ${{ github.base_ref }}  # This refers to the PR base branch, usually 'main'
+          #ssh-key: ${{ secrets.SOURCE_KEY }}
+          path: ${{ env.SRC_MAIN_BRANCH_DIR }}
 
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
           repository: ${{ env.tool_repo }}
-          path: action_tool
           ref: ${{ env.tool_branch }}
           fetch-depth: 0
+          path: ${{ env.TOOL_PATH_DIR }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -98,7 +105,7 @@ jobs:
           python-version: 3.12
 
       - run: pip install .
-        working-directory: action_tool
+        working-directory: ${{ env.TOOL_PATH_DIR }}
 
       - name: Check PR for any labels suggesting release_override
         shell: python
@@ -106,7 +113,6 @@ jobs:
           RELEASE_OVERRIDE: ${{ needs.eval-release.outputs.release_override }}
           RELEASE_MONO_LABEL: ${{ needs.eval-release.outputs.release_mono_label }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
           from action_tool.git_remote_adapter import get_git_remote_adapter
           from action_tool.config import logger
@@ -115,4 +121,4 @@ jobs:
           
           git_adapter = get_git_remote_adapter()
           git_adapter.make_new_release()
-          
+        working-directory: ${{ env.SRC_MAIN_BRANCH_DIR }}

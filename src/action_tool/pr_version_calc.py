@@ -86,6 +86,9 @@ def run_semantic_release(toml_file, release_override: Literal["--patch", "--mino
     if result.stderr:
         logger.error(result.stderr)
         if output == "":
+            # walk through and log all files in git_dir
+            for fp in git_dir.iterdir():
+                logger.error(f"git_dir: {fp}")
             raise FailedSemantics(result.stderr)
 
     return output

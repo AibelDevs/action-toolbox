@@ -4,8 +4,7 @@ import requests
 
 from action_tool.git_helper import GitHelper
 from action_tool.git_remote_adapter import GiteaRemoteRepo
-from action_tool.gitea_tools import create_gitea_pull_request, create_gitea_label, \
-    create_gitea_release_labels_if_not_exists, add_secret_to_gitea
+from action_tool.gitea_tools import add_secret_to_gitea
 
 
 def test_on_pr_merge(gitea_container, gitea_url, create_dummy_user, create_fake_repository, created_token,
@@ -13,6 +12,8 @@ def test_on_pr_merge(gitea_container, gitea_url, create_dummy_user, create_fake_
     assert gitea_container.status == "created"
     assert requests.get(gitea_url).status_code == 200
     print("Gitea setup and tests passed successfully.")
+
+    os.environ["CONFIG_TOML_FILE"] = (mock_proj_a / "action_config.toml").as_posix()
 
     git_local_helper = GitHelper(mock_proj_a)
     git_local_helper.create_branch("feat/new-stuff", push=True)
@@ -36,17 +37,15 @@ def test_on_pr_merge(gitea_container, gitea_url, create_dummy_user, create_fake_
         secret_value=ssh_deploy_key["encoded_private_key"]
     )
 
-    create_gitea_release_labels_if_not_exists(gitea_url, username, repo_name, created_token)
-
-    create_gitea_label("a-sample-project", gitea_url, username, repo_name, created_token)
+    git_remote_adapter = GiteaRemoteRepo(token=created_token, url=gitea_url, repo_owner=username, repo_name=repo_name)
+    git_remote_adapter.add_missing_repo_labels()
+    git_remote_adapter.add_repo_label("a-sample-project", "#00aabb")
 
     # make a PR
-    create_gitea_pull_request(gitea_url, username, repo_name, created_token, "feat: new-stuff", "feat/new-stuff",
-                              "main")
-    os.environ["PR_NUMBER"] = "1"
-    os.environ["CONFIG_TOML_FILE"] = (mock_proj_a / "action_config.toml").as_posix()
+    pr = git_remote_adapter.create_pr("feat: new-stuff", "feat/new-stuff", "main")
 
-    git_remote_adapter = GiteaRemoteRepo(token=created_token, url=gitea_url, repo_owner=username, repo_name=repo_name)
+    os.environ["PR_NUMBER"] = str(pr["number"])
+
     git_remote_adapter.set_pr_label('release-minor')
     git_remote_adapter.set_pr_label('a-sample-project')
 

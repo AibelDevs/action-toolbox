@@ -151,14 +151,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }} # we don't need the PR head sha, we need the base sha to calculate the next version
           fetch-depth: 0
+          path: ${{ env.SRC_MAIN_BRANCH_DIR }}
 
       - name: Checkout Tool
         uses: actions/checkout@v4
         with:
           repository: ${{ env.tool_repo }}
-          path: action_tool
           ref: ${{ env.tool_branch }}
           fetch-depth: 0
+          path: ${{ env.TOOL_PATH_DIR }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -167,7 +168,7 @@ jobs:
 
       - run: |
           pip install .
-        working-directory: action_tool
+        working-directory: ${{ env.TOOL_PATH_DIR }}
 
       - name: Review all results and write a summary
         id: comment_body
@@ -198,6 +199,7 @@ jobs:
           logger.setLevel("INFO")
           
           perform_pr_final_review()
+        working-directory: ${{ env.SRC_MAIN_BRANCH_DIR }}
 
       - name: Fail if linting failed
         if: steps.comment_body.outputs.review_ok == 'false'

@@ -113,6 +113,7 @@ def create_gitea_pull_request(gitea_url: str, owner: str, repo: str, token: str,
 
     if response.status_code == 201:
         print(f"Pull request created successfully: {response.json().get('html_url')}")
+        return response.json()
     else:
         raise ValueError(f"Failed to create pull request: {response.status_code} - {response.text}")
 
