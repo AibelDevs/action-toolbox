@@ -528,6 +528,9 @@ class LocalGitRemoteRepo(GitRemoteRepo):
     def get_pr_release_label(self):
         pass
 
+    def add_repo_label(self, label: str, color: str):
+        pass
+
 
 def is_in_github_action():
     actions = os.getenv('GITHUB_ACTIONS') == "true"
