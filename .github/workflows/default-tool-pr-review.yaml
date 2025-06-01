@@ -198,23 +198,25 @@ jobs:
             const issue_number = context.issue.number
             const owner = context.repo.owner
             const repo = context.repo.repo
-            
+
             // List all comments on the PR
             const comments = await github.rest.issues.listComments({
               issue_number,
               owner,
               repo
             });
-            
-            // Find the last comment made by the bot
-            const botComment = comments.data.reverse().find(comment => comment.user.login === 'github-actions[bot]');
-            
-            // If a previous comment by the bot exists, delete it
-            if (botComment) {
+
+            // Filter comments that contain the hidden tag ACTION_TOOLBOX_PR_BOT
+            const botComments = comments.data.filter(comment =>
+              comment.body.includes('ACTION_TOOLBOX_PR_BOT')
+            );
+
+            // Delete each matching comment
+            for (const comment of botComments) {
               await github.rest.issues.deleteComment({
                 owner,
                 repo,
-                comment_id: botComment.id
+                comment_id: comment.id
               });
             }
 
@@ -225,13 +227,15 @@ jobs:
           script: |
             const bodyBase64 = '${{ steps.comment_body.outputs.body }}'
             const body = Buffer.from(bodyBase64, 'base64').toString('utf-8')
-            
+            const hiddenTag = '<!-- ACTION_TOOLBOX_PR_BOT -->\n'
+            const fullBody = hiddenTag + body
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: body
-            })
+              body: fullBody
+            })  
 
       - name: Fail if linting failed
         if: steps.comment_body.outputs.review_ok == 'false'
